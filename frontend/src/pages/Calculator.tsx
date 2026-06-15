@@ -5,6 +5,7 @@ import type { CalcResponse, SchemaResponse } from "../lib/domainTypes";
 import type { GWPSet } from "../lib/types";
 import { Button, EmptyState, Spinner } from "../components/ui";
 import { BenchmarkChart, BreakdownBars } from "../components/charts";
+import { ReportActions, ReportPrint } from "../components/ReportPanel";
 import "./calculator.css";
 
 const REGIONS = [
@@ -185,6 +186,8 @@ function Result({ data }: { data: CalcResponse }) {
         <div className="result-note">⚠ {r.notes.join(" ")}</div>
       ) : null}
 
+      <ReportActions data={data} />
+
       {r.benchmarks ? (
         <div className="result-block">
           <h3>Dibanding rata-rata</h3>
@@ -201,6 +204,8 @@ function Result({ data }: { data: CalcResponse }) {
         <span className="mono">run: {data.run_id.slice(0, 8)}</span>
         <span>Tersimpan & dapat dihitung ulang (snapshot beku).</span>
       </div>
+
+      <ReportPrint data={data} />
     </div>
   );
 }

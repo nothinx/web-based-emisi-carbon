@@ -65,6 +65,31 @@ export interface FacilityRollupItem {
   by_scope: { scope: number; label: string; co2e_kg: number }[];
 }
 
+export interface MethodologyItem {
+  category: string;
+  category_name: string;
+  scope: number | null;
+  gas: string;
+  value: number;
+  unit: string;
+  version: number;
+  region: string;
+  gwp_applied: number;
+  tier: number | null;
+  source: {
+    name?: string;
+    publisher?: string | null;
+    url?: string | null;
+    year?: number | null;
+    credibility_tier?: number;
+  };
+  uncertainty: {
+    dist_type?: string | null;
+    dist_params?: Record<string, number> | null;
+    uncertainty_pct?: number | null;
+  } | null;
+}
+
 export interface DomainReport {
   domain_id: string;
   total_co2e_kg: number;
@@ -75,6 +100,7 @@ export interface DomainReport {
   notes: string[];
   scope_rollup?: ScopeRollupItem[] | null;
   facility_rollup?: FacilityRollupItem[] | null;
+  methodology?: MethodologyItem[] | null;
 }
 
 export interface CalcResponse {

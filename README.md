@@ -4,9 +4,10 @@ Web app perhitungan emisi karbon (CO₂e) tingkat penelitian — **reproducible,
 traceable, uncertainty-aware**, dengan prioritas faktor emisi lokal Indonesia.
 Satu *core engine* + *domain modules* (Personal, Organizational, Sector, Product/LCA).
 
-Status: Phase 0 (core) + Phase 1 (Personal) + Phase 2a (Organizational — GHG Protocol
-Scope 1/2/3, multi-fasilitas) selesai (lihat `docs/methodology.md`). Berikutnya: Phase 2b
-(laporan PDF/Excel), lalu Phase 3 (Monte Carlo), 4 (Sector + IoT), 5 (Product/LCA).
+Status: Phase 0 (core) + Phase 1 (Personal) + Phase 2 (Organizational GHG Protocol
+Scope 1/2/3 multi-fasilitas; **2b** pelaporan: Excel + laporan HTML cetak + methodology
+appendix) selesai (lihat `docs/methodology.md`). Berikutnya: Phase 3 (Monte Carlo +
+scenario), 4 (Sector + IoT), 5 (Product/LCA).
 
 ## 🌐 Demo Live (browser, tanpa instal)
 
@@ -34,7 +35,7 @@ client-side. Cukup buka link, langsung pakai (tanpa login/server). Cocok untuk d
 ```bash
 cd backend
 uv venv --python 3.12
-uv pip install -e ".[dev]"
+uv pip install -e ".[dev,report]"   # report = openpyxl (export Excel)
 # (opsional) salin .env.example -> .env
 
 # buat tabel + seed faktor contoh

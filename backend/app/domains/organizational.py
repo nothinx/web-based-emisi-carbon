@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import math
 
-from app.domains.base import ActivitySpec, DomainReport
+from app.domains.base import ActivitySpec, DomainReport, build_methodology
 from app.models.project import CalculationResult
 
 # Label scope (GHG Protocol).
@@ -252,4 +252,5 @@ class OrganizationalDomain:
             notes=notes,
             scope_rollup=scope_rollup,
             facility_rollup=facility_rollup,
+            methodology=build_methodology(results),
         )

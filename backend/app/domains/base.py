@@ -45,6 +45,46 @@ class DomainReport:
     notes: list[str] = field(default_factory=list)
     scope_rollup: list[dict] | None = None     # per scope: {scope,label,co2e_kg,share}
     facility_rollup: list[dict] | None = None  # per fasilitas: {name,co2e_kg,share,by_scope}
+    # Methodology appendix: faktor unik terpakai + sitasi (dari snapshot beku).
+    # Disertakan di report agar laporan self-contained & dapat dipertahankan
+    # secara akademik (lihat §10 spec), juga jalan di demo statis tanpa backend.
+    methodology: list[dict] | None = None
+
+
+def build_methodology(results: list[CalculationResult]) -> list[dict]:
+    """Daftar faktor unik yang dipakai + sitasi lengkap, dari snapshot beku.
+
+    Dedup per (factor_id) bila ada, jika tidak per (kategori,gas,region,versi).
+    Inilah bahan methodology appendix di export laporan.
+    """
+    seen: dict[str, dict] = {}
+    for r in results:
+        s = r.factor_snapshot
+        cat = s.get("category", {})
+        gas = s.get("gas", {})
+        key = s.get("factor_id") or (
+            f"{cat.get('code')}|{gas.get('symbol')}|{s.get('region')}|{s.get('version')}"
+        )
+        if key in seen:
+            continue
+        seen[key] = {
+            "category": cat.get("code"),
+            "category_name": cat.get("name"),
+            "scope": cat.get("scope"),
+            "gas": gas.get("symbol"),
+            "value": s.get("value"),
+            "unit": s.get("unit"),
+            "version": s.get("version"),
+            "region": s.get("region"),
+            "gwp_applied": s.get("gwp_set", {}).get("gwp_applied"),
+            "source": s.get("source", {}),
+            "uncertainty": s.get("uncertainty"),
+            "tier": s.get("tier"),
+        }
+    return sorted(
+        seen.values(),
+        key=lambda x: (x["scope"] if x["scope"] is not None else 99, x["category"] or "", x["gas"] or ""),
+    )
 
 
 @runtime_checkable

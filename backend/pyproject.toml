@@ -20,7 +20,9 @@ dependencies = [
 
 [project.optional-dependencies]
 postgres = ["asyncpg>=0.30", "psycopg[binary]>=3.2"]
-report = ["weasyprint>=63", "openpyxl>=3.1"]  # PDF/Excel export (Phase 2)
+report = ["openpyxl>=3.1"]  # Excel export (Phase 2b). PDF = laporan HTML cetak
+# (browser Print→PDF): tanpa native lib (WeasyPrint butuh GTK/Pango, gagal di env
+# Windows ini) & otomatis parity dengan demo statis yang tanpa backend.
 dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "httpx>=0.28", "ruff>=0.8"]
 
 [tool.pytest.ini_options]

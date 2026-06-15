@@ -5,6 +5,7 @@ import type { CalcResponse, InputSchema, SchemaProperty, SchemaResponse } from "
 import type { GWPSet } from "../lib/types";
 import { Button, EmptyState, Spinner } from "../components/ui";
 import { BreakdownBars, ScopeRollup } from "../components/charts";
+import { ReportActions, ReportPrint } from "../components/ReportPanel";
 import { fmtNumber } from "../lib/format";
 import "./calculator.css";
 import "./organizational.css";
@@ -298,6 +299,8 @@ function OrgResult({ data }: { data: CalcResponse }) {
 
       {r.notes.length ? <div className="result-note">⚠ {r.notes.join(" ")}</div> : null}
 
+      <ReportActions data={data} />
+
       {r.scope_rollup?.length ? (
         <div className="result-block">
           <h3>Rollup per Scope (GHG Protocol)</h3>
@@ -342,6 +345,8 @@ function OrgResult({ data }: { data: CalcResponse }) {
         <span className="mono">run: {data.run_id.slice(0, 8)}</span>
         <span>Tersimpan & dapat dihitung ulang (snapshot beku).</span>
       </div>
+
+      <ReportPrint data={data} />
     </div>
   );
 }

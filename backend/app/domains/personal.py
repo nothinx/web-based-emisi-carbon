@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 
-from app.domains.base import ActivitySpec, DomainReport
+from app.domains.base import ActivitySpec, DomainReport, build_methodology
 from app.models.project import CalculationResult
 
 # field input -> (category_code, unit aktivitas, faktor anualisasi)
@@ -169,4 +169,5 @@ class PersonalDomain:
             breakdown=breakdown,
             benchmarks=bench,
             notes=notes,
+            methodology=build_methodology(results),
         )

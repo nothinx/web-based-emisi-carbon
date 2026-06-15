@@ -161,6 +161,49 @@ function gwpService(name: string): GWPService {
   return { name, horizon_years: set.horizon_years, values };
 }
 
+// Snapshot beku (mirror app/core/provenance.build_factor_snapshot) — cukup untuk
+// recompute deterministik & sitasi akademik (methodology appendix).
+function makeSnapshot(f: EmissionFactor, svc: GWPService, gwpApplied: number) {
+  const cat = categories[f.category_id];
+  const src = sources[f.source_id];
+  return {
+    factor_id: f.id, version: f.version, value: f.value, unit: f.unit,
+    region: f.region, gwp_basis: f.gwp_basis, tier: f.tier,
+    gas: { symbol: f.gas_id, name: gases[f.gas_id]?.name },
+    uncertainty: { dist_type: f.dist_type, dist_params: f.dist_params, uncertainty_pct: f.uncertainty_pct },
+    source: {
+      name: src.name, publisher: src.publisher, url: src.url,
+      year: src.year, credibility_tier: src.credibility_tier,
+    },
+    gwp_set: { name: svc.name, horizon_years: svc.horizon_years, gwp_applied: gwpApplied },
+    category: { code: cat.code, name: cat.name, scope: cat.scope },
+  };
+}
+
+// Methodology appendix (mirror app/domains/base.build_methodology).
+function buildMethodology(results: any[]) {
+  const seen: Record<string, any> = {};
+  for (const r of results) {
+    const s = r.factor_snapshot;
+    const cat = s.category ?? {};
+    const gas = s.gas ?? {};
+    const key = s.factor_id || `${cat.code}|${gas.symbol}|${s.region}|${s.version}`;
+    if (seen[key]) continue;
+    seen[key] = {
+      category: cat.code, category_name: cat.name, scope: cat.scope,
+      gas: gas.symbol, value: s.value, unit: s.unit, version: s.version,
+      region: s.region, gwp_applied: s.gwp_set?.gwp_applied,
+      source: s.source ?? {}, uncertainty: s.uncertainty ?? null, tier: s.tier ?? null,
+    };
+  }
+  return Object.values(seen).sort(
+    (a: any, b: any) =>
+      (a.scope ?? 99) - (b.scope ?? 99) ||
+      String(a.category).localeCompare(b.category) ||
+      String(a.gas).localeCompare(b.gas)
+  );
+}
+
 function computePersonal(region: string, gwpName: string, inputs: Record<string, number>) {
   const svc = gwpService(gwpName);
   const results: any[] = [];
@@ -178,17 +221,10 @@ function computePersonal(region: string, gwpName: string, inputs: Record<string,
       const relPct = relativeSdFromPct(f.uncertainty_pct);
       const rel = relPct ?? relativeSdFromDist(f.dist_type, f.dist_params as any);
       const unc = propagateProduct(co2e, [rel]);
-      const cat = categories[f.category_id];
       results.push({
         co2e_kg: co2e,
         co2e_uncertainty: unc,
-        factor_snapshot: {
-          value: f.value, unit: f.unit, region: f.region, gwp_basis: f.gwp_basis,
-          gas: { symbol: f.gas_id },
-          source: { name: sources[f.source_id].name, credibility_tier: sources[f.source_id].credibility_tier },
-          gwp_set: { name: svc.name, horizon_years: svc.horizon_years, gwp_applied: gwpApplied },
-          category: { code: cat.code, name: cat.name, scope: cat.scope },
-        },
+        factor_snapshot: makeSnapshot(f, svc, gwpApplied),
       });
     }
   }
@@ -228,6 +264,7 @@ function aggregatePersonal(results: any[]) {
   return {
     domain_id: "personal", total_co2e_kg: total, total_co2e_tonnes: tonnes,
     uncertainty, breakdown, benchmarks: { ...PERSONAL_BENCHMARKS, comparison }, notes,
+    methodology: buildMethodology(results),
   };
 }
 
@@ -324,18 +361,11 @@ function computeOrg(gwpName: string, inputs: any) {
       const relPct = relativeSdFromPct(f.uncertainty_pct);
       const rel = relPct ?? relativeSdFromDist(f.dist_type, f.dist_params as any);
       const unc = propagateProduct(co2e, [rel]);
-      const cat = categories[f.category_id];
       results.push({
         co2e_kg: co2e,
         co2e_uncertainty: unc,
         facility: spec.facility,
-        factor_snapshot: {
-          value: f.value, unit: f.unit, region: f.region, gwp_basis: f.gwp_basis,
-          gas: { symbol: f.gas_id },
-          source: { name: sources[f.source_id].name, credibility_tier: sources[f.source_id].credibility_tier },
-          gwp_set: { name: svc.name, horizon_years: svc.horizon_years, gwp_applied: gwpApplied },
-          category: { code: cat.code, name: cat.name, scope: cat.scope },
-        },
+        factor_snapshot: makeSnapshot(f, svc, gwpApplied),
       });
     }
   }
@@ -403,6 +433,7 @@ function aggregateOrg(results: any[]) {
   return {
     domain_id: "organizational", total_co2e_kg: total, total_co2e_tonnes: total / 1000,
     uncertainty, breakdown, benchmarks: null, notes, scope_rollup, facility_rollup,
+    methodology: buildMethodology(results),
   };
 }
 

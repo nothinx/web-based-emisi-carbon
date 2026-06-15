@@ -1,7 +1,7 @@
 # Methodology — Carbon Emission Engine
 
 Dokumen ini dijaga **seiring jalan**: setiap faktor, sumber, asumsi, dan batasan
-dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 2 (Organizational).
+dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 2b (export laporan).
 
 ## 1. Prinsip
 
@@ -110,6 +110,24 @@ Fitur: **multi-fasilitas** (region grid sendiri per fasilitas), **base year**
 scope + rollup per fasilitas (+ rincian per scope) + breakdown per kategori.
 Agregasi ketidakpastian sama seperti Personal (kombinasi sd² antar hasil).
 
+## 5c. Pelaporan & Methodology Appendix (Phase 2b)
+
+Setiap report domain membawa **`methodology`**: daftar faktor unik yang dipakai
+(dedup per `factor_id`/identitas+versi) lengkap dengan sitasi — nilai, unit, versi,
+region, GWP diterapkan, tier, dan sumber (nama, publisher, tahun, URL, credibility
+tier). Dibangun dari `factor_snapshot` beku (`app/domains/base.build_methodology`),
+sehingga laporan **self-contained & dapat dipertahankan akademik** tanpa query faktor
+live, dan jalan identik di demo statis.
+
+- **Excel** (`GET /reports/{run_id}.xlsx`, openpyxl): 3 sheet — Ringkasan (konteks +
+  rollup scope), Hasil (per aktivitas immutable), Methodology (faktor + sumber).
+- **PDF**: lewat **laporan HTML cetak** di frontend (tombol "Cetak / Simpan PDF" →
+  `window.print()`; lihat `components/ReportPanel.tsx` + `report.css`). Dipilih
+  ketimbang WeasyPrint karena WeasyPrint butuh native lib GTK/Pango yang **gagal di
+  env Windows ini** — pendekatan HTML-print tanpa native lib & otomatis parity dengan
+  demo statis (yang tak punya backend). Demo statis mengunduh **CSV** (client-side)
+  sebagai ganti `.xlsx`.
+
 ## 6. Batasan (Limitations)
 
 - **Faktor grid Indonesia adalah placeholder** — ganti dengan faktor resmi
@@ -122,7 +140,9 @@ Agregasi ketidakpastian sama seperti Personal (kombinasi sd² antar hasil).
   generik (kendaraan, LPG), kurang ideal untuk yang sangat lokal.
 - **Scope 3 Organizational baru sebagian** (perjalanan dinas udara & limbah TPA);
   13 kategori GHG Protocol lainnya menyusul bertahap.
-- **Laporan PDF/Excel + methodology appendix** (export) direncanakan **Phase 2b**.
+- **PDF tidak digenerate server-side** — memakai cetak HTML browser (Save as PDF).
+  Untuk PDF otomatis di pipeline (mis. batch/headless), pertimbangkan headless Chrome
+  atau install runtime GTK agar WeasyPrint jalan; di luar lingkup env saat ini.
 - Sector (IPCC Tier) & Product/LCA menyusul di Phase 4/5. LCA v1 akan **parametrik**
   dan dinyatakan sebagai limitation, bukan klaim akurasi LCA penuh.
 
@@ -135,4 +155,8 @@ Agregasi ketidakpastian sama seperti Personal (kombinasi sd² antar hasil).
 - **Phase 2a** — domain Organizational (GHG Protocol): Scope 1/2/3, multi-fasilitas
   dengan grid regional per fasilitas, base year, rollup per scope & per fasilitas,
   region per-aktivitas di engine, port ke build statis. Uji reproducibility +
-  rollup scope. (Phase 2b: export PDF/Excel.)
+  rollup scope.
+- **Phase 2b** — pelaporan & methodology appendix: `methodology` di tiap report
+  (faktor + sitasi dari snapshot), export Excel `/reports/{run_id}.xlsx` (openpyxl,
+  3 sheet), laporan HTML cetak (browser Print→PDF) + unduh CSV di demo statis.
+  24 backend test (+4 report).

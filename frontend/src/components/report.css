@@ -1,0 +1,50 @@
+/* Ekspor laporan: tombol + dokumen cetak.
+   Dokumen .report-print disembunyikan dari layar (off-screen) dan hanya tampil
+   saat print; window.print() → user "Save as PDF". Tanpa native lib di server. */
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-6);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Off-screen di layar (tidak mengganggu layout/interaksi). */
+.report-print {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 760px;
+  color: #111;
+  font-family: var(--font-sans);
+}
+.report-print h1 { font-family: var(--font-serif); font-size: 20px; margin: 0 0 2px; }
+.report-print h2 { font-size: 13px; margin: 18px 0 6px; border-bottom: 1px solid #999; padding-bottom: 3px; }
+.report-print .rp-meta { font-size: 11px; color: #555; margin: 0 0 12px; }
+.report-print table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.report-print .rp-kv th { text-align: left; width: 140px; padding: 2px 6px 2px 0; }
+.report-print .rp-kv td { padding: 2px 0; }
+.report-print .rp-table th,
+.report-print .rp-table td {
+  border: 1px solid #ccc;
+  padding: 3px 6px;
+  text-align: left;
+}
+.report-print .rp-table thead th { background: #f0f0f0; }
+.report-print .rp-meth { font-size: 10px; }
+.report-print .rp-note { font-size: 10px; color: #8a5a00; margin-top: 12px; }
+.report-print .rp-foot { font-size: 9px; color: #777; margin-top: 14px; }
+
+@media print {
+  /* Sembunyikan UI, tampilkan hanya dokumen laporan. */
+  body * { visibility: hidden; }
+  .report-print, .report-print * { visibility: visible; }
+  .report-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .report-print .rp-table thead th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
