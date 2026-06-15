@@ -6,6 +6,7 @@ import { FactorRegistry } from "./pages/FactorRegistry";
 import { Calculator } from "./pages/Calculator";
 import { Organizational } from "./pages/Organizational";
 import { Sector } from "./pages/Sector";
+import { Product } from "./pages/Product";
 import { CategoriesPage, GWPPage, SourcesPage } from "./pages/Lookups";
 
 function Protected() {
@@ -17,6 +18,7 @@ function Protected() {
         <Route path="/calculator" element={<Calculator />} />
         <Route path="/organizational" element={<Organizational />} />
         <Route path="/sector" element={<Sector />} />
+        <Route path="/product" element={<Product />} />
         <Route path="/factors" element={<FactorRegistry />} />
         <Route path="/sources" element={<SourcesPage />} />
         <Route path="/categories" element={<CategoriesPage />} />

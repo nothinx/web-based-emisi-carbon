@@ -4,11 +4,11 @@ Web app perhitungan emisi karbon (CO₂e) tingkat penelitian — **reproducible,
 traceable, uncertainty-aware**, dengan prioritas faktor emisi lokal Indonesia.
 Satu *core engine* + *domain modules* (Personal, Organizational, Sector, Product/LCA).
 
-Status: Phase 0 (core) + Phase 1 (Personal) + Phase 2 (Organizational GHG Protocol
-Scope 1/2/3 multi-fasilitas; **2b** pelaporan: Excel + laporan HTML cetak + methodology
-appendix) + Phase 3 (Monte Carlo + sensitivity + scenario what-if) selesai (lihat
-`docs/methodology.md`) + Phase 4 (Sector Tani/Energi — IPCC tier strategies + IoT
-ingestion). Berikutnya: Phase 5 (Product/LCA).
+Status: **semua fase (0–5) selesai** — Phase 0 (core), 1 (Personal), 2 (Organizational
+GHG Protocol Scope 1/2/3 multi-fasilitas + pelaporan Excel/HTML + methodology appendix),
+3 (Monte Carlo + sensitivity + scenario what-if), 4 (Sector Tani/Energi — IPCC tier
+strategies + IoT ingestion), 5 (Product/LCA parametrik). Lihat `docs/methodology.md`.
+Lanjutan: faktor lokal Indonesia, Scope 3 lengkap, LULUCF, LCA non-proxy.
 
 ## 🌐 Demo Live (browser, tanpa instal)
 

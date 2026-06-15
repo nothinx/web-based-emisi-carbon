@@ -1,7 +1,7 @@
 # Methodology — Carbon Emission Engine
 
 Dokumen ini dijaga **seiring jalan**: setiap faktor, sumber, asumsi, dan batasan
-dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 4 (Sector + IoT).
+dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 5 (Product/LCA) — semua domain.
 
 ## 1. Prinsip
 
@@ -106,6 +106,11 @@ Proyeksi analitis di atas baseline; tak menyentuh faktor live.
 | manure_cattle | N₂O | 0.005 | kgN2O-N/kgN | GLOBAL | ipcc_2019 | ±50% | PLACEHOLDER EF3; Nex=60, MS=1.0 (meta) |
 | fert_synthetic_n | N₂O | 0.015714 | kgN2O/kgN | GLOBAL | ipcc_2019 | ±60% | EF1 0.01 ×44/28 (N₂O langsung Tier 1) |
 | rice_cultivation | CH₄ | 143 | kgCH4/ha | GLOBAL | ipcc_2019 | ±50% | PLACEHOLDER Tier 1/ha/musim |
+| mat_steel | CO₂ | 2.0 | kgCO2e/kg | GLOBAL | lca_generic | ±25% | PLACEHOLDER baja primer (cradle-to-gate) |
+| mat_aluminium | CO₂ | 8.0 | kgCO2e/kg | GLOBAL | lca_generic | ±30% | PLACEHOLDER aluminium primer |
+| mat_plastic | CO₂ | 3.0 | kgCO2e/kg | GLOBAL | lca_generic | ±25% | PLACEHOLDER PET |
+| mat_cardboard | CO₂ | 0.9 | kgCO2e/kg | GLOBAL | lca_generic | ±30% | PLACEHOLDER kardus |
+| mat_transport | CO₂ | 0.107 | kgCO2e/tkm | GLOBAL | defra_2024 | ±15% | HGV rata-rata, per tonne-km |
 
 ## 5b. Domain (Phase 1–2)
 
@@ -170,6 +175,19 @@ satu transaksi), auth **API key** terpisah (mesin). Sensor → `ActivityRecord`
 (`data_origin=sensor`, `sensor_id` di domain_fields) pada project target; lalu masuk
 run kalkulasi seperti data manual.
 
+### Product/LCA (Phase 5) — parametrik v1
+Product carbon footprint **parametrik** (cradle-to-gate proxy): bill-of-materials
+(baja, aluminium, plastik, kardus) + energi manufaktur (`elec_grid`) + transport
+(`mat_transport`, per tonne-km), masing-masing kuantitas × faktor material → CO₂e.
+Dinormalisasi ke **functional unit**: `amount = kuantitas_total / units_produced`
+(default 1), sehingga hasil = kgCO₂e per 1 functional unit dengan breakdown per material
+tetap proporsional. Strategy Multiply (faktor sudah CO₂e).
+
+**Limitation eksplisit:** bukan integrasi database LCA komersial (mis. ecoinvent),
+faktor material adalah **proxy/placeholder**, batas cradle-to-gate, end-of-life & fase
+penggunaan belum dimodelkan. **Bukan klaim akurasi LCA penuh** — dinyatakan di catatan
+report & dokumen ini.
+
 ## 6. Batasan (Limitations)
 
 - **Faktor grid Indonesia adalah placeholder** — ganti dengan faktor resmi
@@ -187,8 +205,9 @@ run kalkulasi seperti data manual.
   atau install runtime GTK agar WeasyPrint jalan; di luar lingkup env saat ini.
 - **Sector mayoritas Tier 1** dgn faktor default/placeholder (EF enterik, EF3 manure,
   CH₄ sawah). **LULUCF belum** dimodelkan. Tier 2/3 & faktor lokal Indonesia menyusul.
-- Product/LCA menyusul di Phase 5. LCA v1 akan **parametrik** dan dinyatakan sebagai
-  limitation, bukan klaim akurasi LCA penuh.
+- **Product/LCA v1 parametrik** (faktor material proxy, cradle-to-gate; tanpa fase
+  penggunaan & end-of-life) — bukan klaim akurasi LCA penuh; ganti dgn database LCA
+  resmi untuk publikasi.
 
 ## 7. Riwayat
 - **Phase 0** — core scaffolding: data model, engine + MultiplyStrategy,
@@ -211,3 +230,6 @@ run kalkulasi seperti data manual.
 - **Phase 4** — Sector (Tani/Energi): strategy IPCC enterik CH₄ (Tier 1/2) & manure
   N₂O (Tier 1), pupuk N₂O & sawah CH₄ (multiply), energi reuse; domain Sector + UI;
   IoT ingestion batch (`/ingest/batch`). Port ke build statis. 36 backend test (+6).
+- **Phase 5** — Product/LCA parametrik: domain Product (BOM material + energi +
+  transport, normalisasi functional unit), faktor material proxy (limitation
+  dinyatakan). Port ke build statis. **40 backend test** (+4). Semua 4 domain selesai.

@@ -593,6 +593,86 @@ function aggregateSector(results: any[]) {
   return { domain_id: "sector", total_co2e_kg: total, total_co2e_tonnes: total / 1000, uncertainty, breakdown, benchmarks: null, notes };
 }
 
+// ---------------- Product/LCA domain (mirror app/domains/product.py) ----------------
+const PRODUCT_SCHEMA = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  title: "Product Carbon Footprint (LCA parametrik)",
+  type: "object",
+  "x-domain": "product",
+  properties: {
+    units_produced: { type: "number", minimum: 1, title: "Jumlah unit dinilai",
+      "x-ui": { group: "Functional unit", unit: "unit", help: "Total dibagi nilai ini → emisi per 1 functional unit.", placeholder: "1" } },
+    steel_kg: { type: "number", minimum: 0, title: "Baja", "x-ui": { group: "Material", unit: "kg total" } },
+    aluminium_kg: { type: "number", minimum: 0, title: "Aluminium", "x-ui": { group: "Material", unit: "kg total" } },
+    plastic_kg: { type: "number", minimum: 0, title: "Plastik (PET)", "x-ui": { group: "Material", unit: "kg total" } },
+    cardboard_kg: { type: "number", minimum: 0, title: "Kardus/kemasan", "x-ui": { group: "Material", unit: "kg total" } },
+    electricity_kwh: { type: "number", minimum: 0, title: "Listrik manufaktur", "x-ui": { group: "Proses & distribusi", unit: "kWh total" } },
+    transport_tkm: { type: "number", minimum: 0, title: "Transport distribusi",
+      "x-ui": { group: "Proses & distribusi", unit: "tonne-km total", help: "Massa × jarak (mis. 0.5 t × 300 km = 150 tkm)." } },
+  },
+  "x-groups": ["Functional unit", "Material", "Proses & distribusi"],
+};
+
+const PRODUCT_MAP: Record<string, [string, string]> = {
+  steel_kg: ["mat_steel", "kg"],
+  aluminium_kg: ["mat_aluminium", "kg"],
+  plastic_kg: ["mat_plastic", "kg"],
+  cardboard_kg: ["mat_cardboard", "kg"],
+  electricity_kwh: ["elec_grid", "kWh"],
+  transport_tkm: ["mat_transport", "tkm"],
+};
+
+function computeProduct(gwpName: string, inputs: any, opts?: CalcOpts) {
+  const svc = gwpService(gwpName);
+  const units = Number(inputs.units_produced) || 1;
+  const results: any[] = [];
+  for (const [field, [code, unit]] of Object.entries(PRODUCT_MAP)) {
+    const raw = inputs[field];
+    if (raw == null || raw === 0 || raw === "") continue;
+    const amount = Number(raw) / units;
+    for (const f of resolveFactors(code, "GLOBAL")) {
+      const denom = denominatorOf(f.unit);
+      const amountConv = convert(amount, unit, denom);
+      const gwpApplied = f.gwp_basis === "CO2e" ? 1.0 : gwpOf(svc, f.gas_id);
+      const co2e = amountConv * f.value * gwpApplied;
+      results.push({
+        co2e_kg: co2e,
+        co2e_uncertainty: propagateProduct(co2e, [relOf(f)]),
+        factor_snapshot: makeSnapshot(f, svc, gwpApplied),
+      });
+    }
+  }
+  return finalizeReport(aggregateProduct(results), results, opts);
+}
+
+function aggregateProduct(results: any[]) {
+  const total = results.reduce((a, r) => a + r.co2e_kg, 0);
+  const groups: Record<string, any> = {};
+  for (const r of results) {
+    const cat = r.factor_snapshot.category;
+    const g = (groups[cat.code] ??= { code: cat.code, name: cat.name, co2e_kg: 0 });
+    g.co2e_kg += r.co2e_kg;
+  }
+  const breakdown = Object.values(groups).sort((a: any, b: any) => b.co2e_kg - a.co2e_kg);
+  for (const g of breakdown as any[]) g.share = total ? g.co2e_kg / total : 0;
+
+  let varSum = 0; let hasUnc = false;
+  for (const r of results) {
+    const sd = r.co2e_uncertainty?.sd;
+    if (sd != null) { varSum += sd * sd; hasUnc = true; }
+  }
+  let uncertainty = null;
+  if (hasUnc) {
+    const sd = Math.sqrt(varSum);
+    uncertainty = { mean: total, sd, ci_low: Math.max(0, total - 1.959963985 * sd), ci_high: total + 1.959963985 * sd };
+  }
+  const notes = [
+    "LCA v1 parametrik (cradle-to-gate proxy) — bukan integrasi database LCA penuh; " +
+    "faktor material placeholder. Hasil = kgCO₂e per functional unit.",
+  ];
+  return { domain_id: "product", total_co2e_kg: total, total_co2e_tonnes: total / 1000, uncertainty, breakdown, benchmarks: null, notes };
+}
+
 // ---------------- Factor CRUD (in-memory + localStorage) ----------------
 function now() { return new Date().toISOString(); }
 
@@ -663,12 +743,14 @@ export async function staticRequest<T>(method: string, path: string, body?: unkn
         { domain_id: "personal", title: PERSONAL_SCHEMA.title },
         { domain_id: "organizational", title: ORG_SCHEMA.title },
         { domain_id: "sector", title: SECTOR_SCHEMA.title },
+        { domain_id: "product", title: PRODUCT_SCHEMA.title },
       ] as T;
     m = match(p, /^\/domains\/(.+)\/schema$/);
     if (m) {
       if (m[1] === "personal") return { input_schema: PERSONAL_SCHEMA, benchmarks: PERSONAL_BENCHMARKS } as T;
       if (m[1] === "organizational") return { input_schema: ORG_SCHEMA, benchmarks: null } as T;
       if (m[1] === "sector") return { input_schema: SECTOR_SCHEMA, benchmarks: null } as T;
+      if (m[1] === "product") return { input_schema: PRODUCT_SCHEMA, benchmarks: null } as T;
       throw new ApiError(404, "Domain belum tersedia");
     }
   }
@@ -700,6 +782,8 @@ export async function staticRequest<T>(method: string, path: string, body?: unkn
         report = computeOrg(b.gwp_set_name ?? "AR6", b.inputs ?? {}, opts);
       } else if (m[1] === "sector") {
         report = computeSector(b.gwp_set_name ?? "AR6", b.inputs ?? {}, opts);
+      } else if (m[1] === "product") {
+        report = computeProduct(b.gwp_set_name ?? "AR6", b.inputs ?? {}, opts);
       } else {
         throw new ApiError(404, "Domain belum tersedia");
       }

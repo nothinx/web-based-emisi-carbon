@@ -9,6 +9,7 @@ const NAV = [
   { to: "/calculator", label: "Kalkulator Personal", hint: "Hitung jejak karbon", group: "Domain" },
   { to: "/organizational", label: "GHG Organisasi", hint: "Scope 1/2/3 multi-fasilitas", group: "Domain" },
   { to: "/sector", label: "Sektor (Tani/Energi)", hint: "Metode IPCC Tier", group: "Domain" },
+  { to: "/product", label: "Product / LCA", hint: "Parametrik per functional unit", group: "Domain" },
   { to: "/factors", label: "Emission Factors", hint: "Jantung registry", group: "Phase 0 · Core" },
   { to: "/sources", label: "Sources", hint: "Sumber & sitasi", group: "Phase 0 · Core" },
   { to: "/categories", label: "Categories", hint: "Kategori aktivitas", group: "Phase 0 · Core" },
