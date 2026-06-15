@@ -174,3 +174,76 @@ async def create_scenario(
     session.add(sc)
     await session.commit()
     return sc
+
+
+@router.post("/projects/{project_id}/scenarios/{scenario_id}/run")
+async def run_scenario(
+    project_id: uuid.UUID, scenario_id: uuid.UUID, session: SessionDep, _: CurrentUser
+):
+    """Jalankan what-if: hitung baseline lalu terapkan override skala per-kategori.
+
+    `overrides`: `{"factor_scale": {kode: x}, "activity_scale": {kode: y}}` — keduanya
+    mengali kontribusi co2e kategori (co2e = aktivitas × faktor, jadi keduanya
+    multiplikatif). Mengembalikan perbandingan baseline vs skenario + delta per kategori.
+    Baseline dihitung dari run baru (immutable, reproducible); skenario adalah proyeksi
+    analitis di atas baseline (tak menyentuh faktor live).
+    """
+    proj = await _get_project(session, project_id)
+    sc = (
+        await session.execute(
+            select(Scenario).where(
+                Scenario.id == scenario_id, Scenario.project_id == project_id
+            )
+        )
+    ).scalar_one_or_none()
+    if sc is None:
+        raise HTTPException(status_code=404, detail="Scenario tidak ditemukan")
+
+    run = CalculationRun(
+        project_id=proj.id,
+        created_at=datetime.now(timezone.utc),
+        gwp_set_id=proj.gwp_set_id,
+        methodology_config={"scenario_id": str(sc.id)},
+        uncertainty_method="analytical",
+    )
+    session.add(run)
+    await session.flush()
+    results = await run_calculation(session, run)
+    await session.commit()
+
+    overrides = sc.overrides or {}
+    fscale = overrides.get("factor_scale", {})
+    ascale = overrides.get("activity_scale", {})
+
+    base_cat: dict[str, dict] = {}
+    for r in results:
+        cat = r.factor_snapshot.get("category", {})
+        code = cat.get("code", "lain")
+        g = base_cat.setdefault(code, {"category": code, "name": cat.get("name", code), "baseline": 0.0})
+        g["baseline"] += r.co2e_kg
+
+    by_category = []
+    base_total = 0.0
+    scen_total = 0.0
+    for code, g in base_cat.items():
+        scale = float(fscale.get(code, 1.0)) * float(ascale.get(code, 1.0))
+        scen = g["baseline"] * scale
+        base_total += g["baseline"]
+        scen_total += scen
+        by_category.append({
+            "category": code, "name": g["name"], "scale": scale,
+            "baseline_kg": g["baseline"], "scenario_kg": scen,
+            "delta_kg": scen - g["baseline"],
+        })
+    by_category.sort(key=lambda x: abs(x["delta_kg"]), reverse=True)
+
+    return {
+        "scenario_id": str(sc.id),
+        "name": sc.name,
+        "run_id": str(run.id),
+        "baseline_total_kg": base_total,
+        "scenario_total_kg": scen_total,
+        "delta_kg": scen_total - base_total,
+        "delta_pct": ((scen_total - base_total) / base_total * 100.0) if base_total else 0.0,
+        "by_category": by_category,
+    }

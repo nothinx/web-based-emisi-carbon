@@ -95,6 +95,80 @@ export function propagateProduct(mean: number, relativeSds: (number | null)[]): 
   return { mean, sd, ci_low: mean - Z95 * sd, ci_high: mean + Z95 * sd };
 }
 
+// ---------------- Monte Carlo (mirror app/core/uncertainty.monte_carlo_total) ----------------
+// PRNG mulberry32 (deterministik) + Box-Muller untuk standard normal. Sample path
+// berbeda dari numpy di backend, tapi reproducible per-seed & ekuivalen secara
+// statistik (estimasi titik/total tetap identik; hanya pita acak yang berbeda path).
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export interface MCItem {
+  mean: number;
+  dist_type?: string | null;
+  dist_params?: Record<string, number> | null;
+  uncertainty_pct?: number | null;
+}
+
+export function monteCarloTotal(items: MCItem[], iterations = 10000, seed = 12345) {
+  const rand = mulberry32(seed);
+  let spare: number | null = null;
+  const randn = (): number => {
+    if (spare != null) {
+      const s = spare;
+      spare = null;
+      return s;
+    }
+    let u = 0;
+    let v = 0;
+    while (u === 0) u = rand();
+    while (v === 0) v = rand();
+    const mag = Math.sqrt(-2.0 * Math.log(u));
+    spare = mag * Math.sin(2 * Math.PI * v);
+    return mag * Math.cos(2 * Math.PI * v);
+  };
+
+  const totals = new Float64Array(iterations);
+  for (const it of items) {
+    const dp = it.dist_params ?? null;
+    const lognSigma = it.dist_type === "lognormal" && dp && dp.gsd ? Math.log(dp.gsd) : null;
+    let rel: number | null = null;
+    if (lognSigma == null) {
+      rel = relativeSdFromPct(it.uncertainty_pct);
+      if (rel == null) rel = relativeSdFromDist(it.dist_type, dp);
+    }
+    for (let i = 0; i < iterations; i++) {
+      let mult: number;
+      if (lognSigma != null) mult = Math.exp(lognSigma * randn());
+      else if (!rel) mult = 1.0;
+      else mult = Math.max(0, 1 + rel * randn());
+      totals[i] += it.mean * mult;
+    }
+  }
+
+  const arr = Array.from(totals);
+  const mean = arr.reduce((a, b) => a + b, 0) / iterations;
+  const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / (iterations - 1);
+  const sorted = arr.slice().sort((a, b) => a - b);
+  const pct = (p: number): number => {
+    const idx = (p / 100) * (sorted.length - 1);
+    const lo = Math.floor(idx);
+    const hi = Math.ceil(idx);
+    return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  };
+  return {
+    mean, sd: Math.sqrt(variance),
+    ci_low: pct(2.5), ci_high: pct(97.5), p50: pct(50),
+    iterations, seed, method: "montecarlo",
+  };
+}
+
 // ---------------- GWP ----------------
 export interface GWPService {
   name: string;

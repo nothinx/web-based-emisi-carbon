@@ -11,6 +11,8 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.engine import run_calculation
+from app.core.uncertainty import monte_carlo_total
+from app.domains.base import build_sensitivity, mc_items
 from app.domains.registry import DOMAINS, get_domain
 from app.models.project import ActivityRecord, CalculationRun, Project
 from app.models.registry import Category, GWPSet
@@ -23,6 +25,9 @@ class DomainCalcIn(BaseModel):
     region: str = "GLOBAL"
     gwp_set_name: str = "AR6"
     base_year: int | None = None        # relevan untuk Organizational
+    uncertainty_method: str = "analytical"   # "analytical" | "montecarlo"
+    mc_iterations: int = 10000
+    mc_seed: int = 12345                 # seed → MC reproducible
     inputs: dict = Field(default_factory=dict)
 
 
@@ -99,12 +104,15 @@ async def calculate_domain(
         activities.append(act)
     await session.flush()
 
+    mc_on = data.uncertainty_method == "montecarlo"
     run = CalculationRun(
         project_id=project.id,
         created_at=datetime.now(timezone.utc),
         gwp_set_id=gwp_set.id,
-        methodology_config={},
-        uncertainty_method="analytical",
+        methodology_config=(
+            {"mc_iterations": data.mc_iterations, "mc_seed": data.mc_seed} if mc_on else {}
+        ),
+        uncertainty_method=data.uncertainty_method,
     )
     session.add(run)
     await session.flush()
@@ -112,6 +120,15 @@ async def calculate_domain(
     await session.commit()
 
     report = domain.aggregate(results, activities)
+    # Phase 3: sensitivity (selalu) + Monte Carlo (bila diminta).
+    report.sensitivity = build_sensitivity(results)
+    if mc_on:
+        mc = monte_carlo_total(mc_items(results), data.mc_iterations, data.mc_seed)
+        report.mc = mc
+        report.uncertainty = {
+            "mean": mc["mean"], "sd": mc["sd"],
+            "ci_low": mc["ci_low"], "ci_high": mc["ci_high"],
+        }
     return {
         "project_id": str(project.id),
         "run_id": str(run.id),

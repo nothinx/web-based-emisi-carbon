@@ -76,6 +76,52 @@ def relative_sd_from_dist(dist_type: str | None, params: dict | None) -> float |
     return None
 
 
+def monte_carlo_total(
+    items: list[tuple[float, str | None, dict | None, float | None]],
+    iterations: int = 10000,
+    seed: int = 12345,
+) -> dict:
+    """Monte Carlo total dari banyak komponen (mis. hasil per aktivitas/gas).
+
+    Tiap item: (mean_co2e, dist_type, dist_params, uncertainty_pct). Untuk tiap item
+    diambil pengali acak (lognormal bila gsd diberikan — menjaga sifat asimetris yang
+    jadi alasan utama pakai MC; selain itu normal multiplikatif dari relative-sd).
+    Komponen diasumsikan independen (sama seperti propagasi analitis). Seeded → hasil
+    **reproducible** (recompute dgn seed sama = angka identik).
+
+    Mengembalikan ringkasan distribusi total: mean, sd, ci 95% (persentil 2.5/97.5),
+    median, iterasi, seed.
+    """
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    total = np.zeros(iterations)
+    for mean, dist_type, params, pct in items:
+        if dist_type == "lognormal" and params and params.get("gsd"):
+            sigma = math.log(params["gsd"])
+            mult = np.exp(sigma * rng.standard_normal(iterations))  # median = 1
+        else:
+            rel = relative_sd_from_pct(pct)
+            if rel is None:
+                rel = relative_sd_from_dist(dist_type, params)
+            if not rel:
+                mult = np.ones(iterations)
+            else:
+                mult = np.clip(1.0 + rel * rng.standard_normal(iterations), 0.0, None)
+        total += mean * mult
+
+    return {
+        "mean": float(total.mean()),
+        "sd": float(total.std(ddof=1)),
+        "ci_low": float(np.percentile(total, 2.5)),
+        "ci_high": float(np.percentile(total, 97.5)),
+        "p50": float(np.percentile(total, 50)),
+        "iterations": iterations,
+        "seed": seed,
+        "method": "montecarlo",
+    }
+
+
 def propagate_product(mean: float, relative_sds: list[float | None]) -> UncertainValue:
     """Propagasi analitis untuk hasil perkalian (amount × factor × gwp ...).
 

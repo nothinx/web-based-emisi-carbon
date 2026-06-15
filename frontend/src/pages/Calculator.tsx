@@ -4,7 +4,7 @@ import { useAsync } from "../lib/useAsync";
 import type { CalcResponse, SchemaResponse } from "../lib/domainTypes";
 import type { GWPSet } from "../lib/types";
 import { Button, EmptyState, Spinner } from "../components/ui";
-import { BenchmarkChart, BreakdownBars } from "../components/charts";
+import { BenchmarkChart, BreakdownBars, SensitivityBars } from "../components/charts";
 import { ReportActions, ReportPrint } from "../components/ReportPanel";
 import "./calculator.css";
 
@@ -21,6 +21,7 @@ export function Calculator() {
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [region, setRegion] = useState("ID-Jamali");
   const [gwpName, setGwpName] = useState("AR6");
+  const [method, setMethod] = useState<"analytical" | "montecarlo">("analytical");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CalcResponse | null>(null);
@@ -53,6 +54,7 @@ export function Calculator() {
       const res = await api.post<CalcResponse>("/domains/personal/calculate", {
         region,
         gwp_set_name: gwpName,
+        uncertainty_method: method,
         inputs: numeric,
       });
       setResult(res);
@@ -108,6 +110,14 @@ export function Calculator() {
                     {g.name} ({g.horizon_years}thn)
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="ctx-field">
+              <span>Ketidakpastian</span>
+              <select className="control" value={method}
+                onChange={(e) => setMethod(e.target.value as "analytical" | "montecarlo")}>
+                <option value="analytical">Analitis (Gaussian)</option>
+                <option value="montecarlo">Monte Carlo</option>
               </select>
             </label>
           </div>
@@ -178,6 +188,7 @@ function Result({ data }: { data: CalcResponse }) {
         {unc && unc.ci_low != null && unc.ci_high != null ? (
           <span className="rh-ci mono">
             95% CI: {(unc.ci_low / 1000).toFixed(2)} – {(unc.ci_high / 1000).toFixed(2)} t
+            {r.mc ? ` · Monte Carlo N=${r.mc.iterations}` : " · analitis"}
           </span>
         ) : null}
       </div>
@@ -187,6 +198,13 @@ function Result({ data }: { data: CalcResponse }) {
       ) : null}
 
       <ReportActions data={data} />
+
+      {r.sensitivity && r.sensitivity.length > 1 ? (
+        <div className="result-block">
+          <h3>Sensitivity — sumber ketidakpastian</h3>
+          <SensitivityBars items={r.sensitivity} />
+        </div>
+      ) : null}
 
       {r.benchmarks ? (
         <div className="result-block">

@@ -1,7 +1,7 @@
 # Methodology — Carbon Emission Engine
 
 Dokumen ini dijaga **seiring jalan**: setiap faktor, sumber, asumsi, dan batasan
-dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 2b (export laporan).
+dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 3 (uncertainty + scenario).
 
 ## 1. Prinsip
 
@@ -51,7 +51,24 @@ diperlukan ketelitian sumber emisi.
 Propagasi Gaussian untuk perkalian: relative-errors dikombinasikan kuadrat
 (`(sd/mean)² = Σ (sdᵢ/meanᵢ)²`), 95% CI ≈ ±1.96·sd. Sumber relative-sd:
 `uncertainty_pct` (ditafsir sebagai ±% pada 95% CI) atau `dist_type` + `dist_params`
-(lognormal via gsd, normal, uniform, triangular). **Monte Carlo menyusul di Phase 3.**
+(lognormal via gsd, normal, uniform, triangular).
+
+**Monte Carlo (Phase 3)** — `app/core/uncertainty.monte_carlo_total`: tiap komponen
+(hasil per aktivitas/gas) disampel `N` iterasi (default 10.000). Lognormal (gsd) disampel
+multiplikatif `exp(σ·Z)`, σ=ln(gsd) — menjaga sifat asimetris yang jadi alasan utama MC;
+distribusi lain memakai pengali normal dari relative-sd (clip ≥0). Komponen diasumsikan
+**independen** (sama seperti analitis). RNG **di-seed** (default 12345) → MC reproducible
+(seed sama = angka identik). Dilaporkan: mean, sd, 95% CI (persentil 2.5/97.5), median.
+Catatan: build statis memakai PRNG berbeda (mulberry32) — reproducible per-seed & ekuivalen
+statistik, tapi sample-path tak identik dengan numpy backend (estimasi titik tetap sama).
+
+**Sensitivity** — kontribusi tiap kategori ke **varians total** (share sdᵢ²/Σsd²),
+menunjukkan faktor mana yang paling menentukan ketidakpastian (`build_sensitivity`).
+
+**Scenario / what-if** — `POST /projects/{id}/scenarios/{sid}/run`: hitung baseline (run
+immutable) lalu terapkan `overrides` (`factor_scale`/`activity_scale` per kategori,
+multiplikatif terhadap co2e) → perbandingan baseline vs skenario + delta per kategori.
+Proyeksi analitis di atas baseline; tak menyentuh faktor live.
 
 ## 5. Faktor Contoh (Seed Phase 0)
 
@@ -132,8 +149,8 @@ live, dan jalan identik di demo statis.
 
 - **Faktor grid Indonesia adalah placeholder** — ganti dengan faktor resmi
   (Ditjen Gatrik/KLHK) per sistem interkoneksi & tahun.
-- **Uncertainty Phase 0 hanya analitis**; korelasi antar-input belum dimodelkan.
-  Monte Carlo (Phase 3) akan menangani distribusi penuh.
+- **Korelasi antar-input belum dimodelkan** (analitis & Monte Carlo sama-sama
+  mengasumsikan komponen independen). Kovarians faktor menyusul bila perlu.
 - **Belum ada uncertainty aktivitas** dalam perhitungan (skema sudah disiapkan di
   `ActivityRecord.activity_uncertainty`).
 - **DEFRA dipakai sebagai fallback** untuk konteks Indonesia — sah untuk faktor
@@ -160,3 +177,7 @@ live, dan jalan identik di demo statis.
   (faktor + sitasi dari snapshot), export Excel `/reports/{run_id}.xlsx` (openpyxl,
   3 sheet), laporan HTML cetak (browser Print→PDF) + unduh CSV di demo statis.
   24 backend test (+4 report).
+- **Phase 3** — uncertainty + scenario: Monte Carlo (`monte_carlo_total`, seeded,
+  default 10k iter) di domain calculate (toggle Analitis/Monte Carlo di UI), sensitivity
+  (share-varians per kategori), scenario what-if (`/scenarios/{sid}/run`). Port MC
+  (mulberry32) + sensitivity ke build statis. 30 backend test (+6 phase 3).

@@ -15,11 +15,62 @@ import {
   convert,
   denominatorOf,
   gwpOf,
+  monteCarloTotal,
   propagateProduct,
   relativeSdFromDist,
   relativeSdFromPct,
   type GWPService,
 } from "./staticEngine";
+
+interface CalcOpts {
+  uncertainty_method?: string;
+  mc_iterations?: number;
+  mc_seed?: number;
+}
+
+// Sensitivity: kontribusi tiap kategori ke varians total (mirror build_sensitivity).
+function buildSensitivity(results: any[]) {
+  const v: Record<string, number> = {};
+  const name: Record<string, string> = {};
+  const co2e: Record<string, number> = {};
+  let totalVar = 0;
+  let totalCo2e = 0;
+  for (const r of results) {
+    const cat = r.factor_snapshot.category ?? {};
+    const code = cat.code ?? "lain";
+    name[code] = cat.name ?? code;
+    const sd = r.co2e_uncertainty?.sd ?? 0;
+    v[code] = (v[code] ?? 0) + sd * sd;
+    co2e[code] = (co2e[code] ?? 0) + r.co2e_kg;
+    totalVar += sd * sd;
+    totalCo2e += r.co2e_kg;
+  }
+  return Object.keys(v)
+    .map((code) => ({
+      category: code, name: name[code],
+      variance_share: totalVar ? v[code] / totalVar : 0,
+      co2e_share: totalCo2e ? co2e[code] / totalCo2e : 0,
+      sd: Math.sqrt(v[code]),
+    }))
+    .sort((a, b) => b.variance_share - a.variance_share);
+}
+
+// Phase 3: lengkapi report dgn sensitivity (selalu) + Monte Carlo (bila diminta).
+function finalizeReport(report: any, results: any[], opts?: CalcOpts) {
+  report.sensitivity = buildSensitivity(results);
+  if (opts?.uncertainty_method === "montecarlo") {
+    const items = results.map((r) => ({
+      mean: r.co2e_kg,
+      dist_type: r.factor_snapshot.uncertainty?.dist_type,
+      dist_params: r.factor_snapshot.uncertainty?.dist_params,
+      uncertainty_pct: r.factor_snapshot.uncertainty?.uncertainty_pct,
+    }));
+    const mc = monteCarloTotal(items, opts.mc_iterations ?? 10000, opts.mc_seed ?? 12345);
+    report.mc = mc;
+    report.uncertainty = { mean: mc.mean, sd: mc.sd, ci_low: mc.ci_low, ci_high: mc.ci_high };
+  }
+  return report;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -204,7 +255,7 @@ function buildMethodology(results: any[]) {
   );
 }
 
-function computePersonal(region: string, gwpName: string, inputs: Record<string, number>) {
+function computePersonal(region: string, gwpName: string, inputs: Record<string, number>, opts?: CalcOpts) {
   const svc = gwpService(gwpName);
   const results: any[] = [];
   for (const [field, [code, unit, annual]] of Object.entries(FIELD_MAP)) {
@@ -228,7 +279,7 @@ function computePersonal(region: string, gwpName: string, inputs: Record<string,
       });
     }
   }
-  return aggregatePersonal(results);
+  return finalizeReport(aggregatePersonal(results), results, opts);
 }
 
 function aggregatePersonal(results: any[]) {
@@ -346,7 +397,7 @@ function orgToSpecs(inputs: any): OrgSpec[] {
   return specs;
 }
 
-function computeOrg(gwpName: string, inputs: any) {
+function computeOrg(gwpName: string, inputs: any, opts?: CalcOpts) {
   const svc = gwpService(gwpName);
   const specs = orgToSpecs(inputs);
   const results: any[] = [];
@@ -369,7 +420,7 @@ function computeOrg(gwpName: string, inputs: any) {
       });
     }
   }
-  return aggregateOrg(results);
+  return finalizeReport(aggregateOrg(results), results, opts);
 }
 
 function aggregateOrg(results: any[]) {
@@ -526,12 +577,20 @@ export async function staticRequest<T>(method: string, path: string, body?: unkn
     }
     m = match(p, /^\/domains\/(.+)\/calculate$/);
     if (m) {
-      const b = body as { region?: string; gwp_set_name?: string; inputs?: any };
+      const b = body as {
+        region?: string; gwp_set_name?: string; inputs?: any;
+        uncertainty_method?: string; mc_iterations?: number; mc_seed?: number;
+      };
+      const opts: CalcOpts = {
+        uncertainty_method: b.uncertainty_method,
+        mc_iterations: b.mc_iterations,
+        mc_seed: b.mc_seed,
+      };
       let report: any;
       if (m[1] === "personal") {
-        report = computePersonal(b.region ?? "GLOBAL", b.gwp_set_name ?? "AR6", b.inputs ?? {});
+        report = computePersonal(b.region ?? "GLOBAL", b.gwp_set_name ?? "AR6", b.inputs ?? {}, opts);
       } else if (m[1] === "organizational") {
-        report = computeOrg(b.gwp_set_name ?? "AR6", b.inputs ?? {});
+        report = computeOrg(b.gwp_set_name ?? "AR6", b.inputs ?? {}, opts);
       } else {
         throw new ApiError(404, "Domain belum tersedia");
       }

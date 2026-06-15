@@ -4,7 +4,7 @@ import { useAsync } from "../lib/useAsync";
 import type { CalcResponse, InputSchema, SchemaProperty, SchemaResponse } from "../lib/domainTypes";
 import type { GWPSet } from "../lib/types";
 import { Button, EmptyState, Spinner } from "../components/ui";
-import { BreakdownBars, ScopeRollup } from "../components/charts";
+import { BreakdownBars, ScopeRollup, SensitivityBars } from "../components/charts";
 import { ReportActions, ReportPrint } from "../components/ReportPanel";
 import { fmtNumber } from "../lib/format";
 import "./calculator.css";
@@ -60,6 +60,7 @@ export function Organizational() {
   const [orgName, setOrgName] = useState("");
   const [baseYear, setBaseYear] = useState(String(new Date().getFullYear() - 1));
   const [gwpName, setGwpName] = useState("AR6");
+  const [method, setMethod] = useState<"analytical" | "montecarlo">("analytical");
   const [facilities, setFacilities] = useState<FacilityState[]>([newFacility(1)]);
   const [orgInputs, setOrgInputs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -107,6 +108,7 @@ export function Organizational() {
         name: orgName || undefined,
         gwp_set_name: gwpName,
         base_year: baseYear ? Number(baseYear) : undefined,
+        uncertainty_method: method,
         inputs: { facilities: facPayload, ...orgNumeric },
       });
       setResult(res);
@@ -162,6 +164,14 @@ export function Organizational() {
                     {g.name} ({g.horizon_years}thn)
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="ctx-field">
+              <span>Ketidakpastian</span>
+              <select className="control" value={method}
+                onChange={(e) => setMethod(e.target.value as "analytical" | "montecarlo")}>
+                <option value="analytical">Analitis (Gaussian)</option>
+                <option value="montecarlo">Monte Carlo</option>
               </select>
             </label>
           </div>
@@ -293,6 +303,7 @@ function OrgResult({ data }: { data: CalcResponse }) {
         {unc && unc.ci_low != null && unc.ci_high != null ? (
           <span className="rh-ci mono">
             95% CI: {(unc.ci_low / 1000).toFixed(2)} – {(unc.ci_high / 1000).toFixed(2)} t
+            {r.mc ? ` · Monte Carlo N=${r.mc.iterations}` : " · analitis"}
           </span>
         ) : null}
       </div>
@@ -340,6 +351,13 @@ function OrgResult({ data }: { data: CalcResponse }) {
         <h3>Rincian per kategori</h3>
         <BreakdownBars items={r.breakdown} />
       </div>
+
+      {r.sensitivity && r.sensitivity.length > 1 ? (
+        <div className="result-block">
+          <h3>Sensitivity — sumber ketidakpastian</h3>
+          <SensitivityBars items={r.sensitivity} />
+        </div>
+      ) : null}
 
       <div className="result-foot">
         <span className="mono">run: {data.run_id.slice(0, 8)}</span>

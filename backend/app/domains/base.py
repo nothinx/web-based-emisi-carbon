@@ -49,6 +49,10 @@ class DomainReport:
     # Disertakan di report agar laporan self-contained & dapat dipertahankan
     # secara akademik (lihat §10 spec), juga jalan di demo statis tanpa backend.
     methodology: list[dict] | None = None
+    # Phase 3 — distribusi total Monte Carlo (bila uncertainty_method=montecarlo).
+    mc: dict | None = None
+    # Phase 3 — sensitivity: kontribusi tiap kategori ke varians total (analitis).
+    sensitivity: list[dict] | None = None
 
 
 def build_methodology(results: list[CalculationResult]) -> list[dict]:
@@ -85,6 +89,49 @@ def build_methodology(results: list[CalculationResult]) -> list[dict]:
         seen.values(),
         key=lambda x: (x["scope"] if x["scope"] is not None else 99, x["category"] or "", x["gas"] or ""),
     )
+
+
+def mc_items(results: list[CalculationResult]) -> list[tuple]:
+    """Ekstrak (mean_co2e, dist_type, dist_params, uncertainty_pct) tiap hasil untuk MC."""
+    items: list[tuple] = []
+    for r in results:
+        unc = (r.factor_snapshot or {}).get("uncertainty") or {}
+        items.append((r.co2e_kg, unc.get("dist_type"), unc.get("dist_params"), unc.get("uncertainty_pct")))
+    return items
+
+
+def build_sensitivity(results: list[CalculationResult]) -> list[dict]:
+    """Sensitivity analitis: kontribusi tiap kategori ke **varians total** (sd²).
+
+    Menunjukkan kategori/faktor mana yang paling menentukan ketidakpastian hasil —
+    pelengkap breakdown emisi (share co2e) dengan share-varians.
+    """
+    var: dict[str, float] = {}
+    name: dict[str, str] = {}
+    co2e: dict[str, float] = {}
+    total_var = 0.0
+    total_co2e = 0.0
+    for r in results:
+        cat = (r.factor_snapshot or {}).get("category", {})
+        code = cat.get("code", "lain")
+        name[code] = cat.get("name", code)
+        sd = (r.co2e_uncertainty or {}).get("sd") or 0.0
+        v = sd * sd
+        var[code] = var.get(code, 0.0) + v
+        co2e[code] = co2e.get(code, 0.0) + r.co2e_kg
+        total_var += v
+        total_co2e += r.co2e_kg
+    rows = [
+        {
+            "category": code,
+            "name": name[code],
+            "variance_share": (var[code] / total_var) if total_var else 0.0,
+            "co2e_share": (co2e[code] / total_co2e) if total_co2e else 0.0,
+            "sd": var[code] ** 0.5,
+        }
+        for code in var
+    ]
+    return sorted(rows, key=lambda x: x["variance_share"], reverse=True)
 
 
 @runtime_checkable

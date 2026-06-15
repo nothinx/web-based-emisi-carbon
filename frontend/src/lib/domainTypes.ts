@@ -90,6 +90,25 @@ export interface MethodologyItem {
   } | null;
 }
 
+export interface MonteCarlo {
+  mean: number;
+  sd: number;
+  ci_low: number;
+  ci_high: number;
+  p50: number;
+  iterations: number;
+  seed: number;
+  method: string;
+}
+
+export interface SensitivityItem {
+  category: string;
+  name: string;
+  variance_share: number;
+  co2e_share: number;
+  sd: number;
+}
+
 export interface DomainReport {
   domain_id: string;
   total_co2e_kg: number;
@@ -101,6 +120,8 @@ export interface DomainReport {
   scope_rollup?: ScopeRollupItem[] | null;
   facility_rollup?: FacilityRollupItem[] | null;
   methodology?: MethodologyItem[] | null;
+  mc?: MonteCarlo | null;
+  sensitivity?: SensitivityItem[] | null;
 }
 
 export interface CalcResponse {

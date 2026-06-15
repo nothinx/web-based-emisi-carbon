@@ -6,8 +6,8 @@ Satu *core engine* + *domain modules* (Personal, Organizational, Sector, Product
 
 Status: Phase 0 (core) + Phase 1 (Personal) + Phase 2 (Organizational GHG Protocol
 Scope 1/2/3 multi-fasilitas; **2b** pelaporan: Excel + laporan HTML cetak + methodology
-appendix) selesai (lihat `docs/methodology.md`). Berikutnya: Phase 3 (Monte Carlo +
-scenario), 4 (Sector + IoT), 5 (Product/LCA).
+appendix) + Phase 3 (Monte Carlo + sensitivity + scenario what-if) selesai (lihat
+`docs/methodology.md`). Berikutnya: Phase 4 (Sector + IoT ingestion), 5 (Product/LCA).
 
 ## 🌐 Demo Live (browser, tanpa instal)
 

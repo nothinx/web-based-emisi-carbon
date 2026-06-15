@@ -1,4 +1,4 @@
-import type { BreakdownItem, ScopeRollupItem } from "../lib/domainTypes";
+import type { BreakdownItem, ScopeRollupItem, SensitivityItem } from "../lib/domainTypes";
 import { fmtNumber } from "../lib/format";
 import "./charts.css";
 
@@ -69,6 +69,31 @@ export function BreakdownBars({ items }: { items: BreakdownItem[] }) {
                 width: `${Math.max(it.share * 100, 0.5)}%`,
                 background: PALETTE[i % PALETTE.length],
               }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Sensitivity: kontribusi tiap kategori ke varians total (sumber ketidakpastian).
+export function SensitivityBars({ items }: { items: SensitivityItem[] }) {
+  const shown = items.filter((it) => it.variance_share > 0.0005);
+  if (!shown.length) return null;
+  return (
+    <div className="breakdown">
+      {shown.map((it, i) => (
+        <div className="bd-row" key={it.category} style={{ ["--i" as string]: i }}>
+          <div className="bd-head">
+            <span className="bd-dot" style={{ background: "var(--c-n2o)" }} />
+            <span className="bd-name">{it.name}</span>
+            <span className="bd-share mono">{(it.variance_share * 100).toFixed(1)}%</span>
+          </div>
+          <div className="bd-track">
+            <div
+              className="bd-fill"
+              style={{ width: `${Math.max(it.variance_share * 100, 0.5)}%`, background: "var(--c-n2o)" }}
             />
           </div>
         </div>
