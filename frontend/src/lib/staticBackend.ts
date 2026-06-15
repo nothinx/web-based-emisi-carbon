@@ -231,6 +231,181 @@ function aggregatePersonal(results: any[]) {
   };
 }
 
+// ---------------- Organizational domain (mirror app/domains/organizational.py) ----------------
+const SCOPE_LABELS: Record<number, string> = {
+  1: "Scope 1 — Emisi langsung",
+  2: "Scope 2 — Energi tidak langsung (listrik dibeli)",
+  3: "Scope 3 — Rantai nilai lainnya",
+};
+
+const ORG_FACILITY_MAP: Record<string, [string, string]> = {
+  natural_gas_kwh: ["natural_gas", "kWh"],
+  diesel_stationary_l: ["diesel_stationary", "L"],
+  lpg_kg: ["lpg", "kg"],
+  electricity_kwh: ["elec_grid", "kWh"],
+};
+const ORG_LEVEL_MAP: Record<string, [string, string]> = {
+  business_travel_air_pkm: ["business_travel_air", "pkm"],
+  waste_landfill_kg: ["waste_landfill", "kg"],
+};
+const ORG_WIDE = "Organisasi (lintas-fasilitas)";
+
+function orgFacilityField(title: string, group: string, unit: string, category: string, extra: object = {}) {
+  return { type: "number", minimum: 0, title, "x-ui": { group, unit, category, ...extra } };
+}
+
+const ORG_SCHEMA = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  title: "GHG Accounting Organisasi",
+  type: "object",
+  "x-domain": "organizational",
+  properties: {
+    facilities: {
+      type: "array",
+      title: "Fasilitas",
+      "x-ui": { widget: "facilities" },
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string", title: "Nama fasilitas", "x-ui": { widget: "text", placeholder: "mis. Pabrik Cikarang" } },
+          region: { type: "string", title: "Wilayah grid listrik", "x-ui": { widget: "region" } },
+          natural_gas_kwh: orgFacilityField("Gas alam (stasioner)", "Scope 1 — Pembakaran langsung", "kWh/tahun", "natural_gas"),
+          diesel_stationary_l: orgFacilityField("Solar (genset/boiler)", "Scope 1 — Pembakaran langsung", "L/tahun", "diesel_stationary"),
+          lpg_kg: orgFacilityField("LPG", "Scope 1 — Pembakaran langsung", "kg/tahun", "lpg"),
+          electricity_kwh: orgFacilityField("Listrik dibeli (PLN)", "Scope 2 — Energi tidak langsung", "kWh/tahun", "elec_grid"),
+        },
+      },
+    },
+    business_travel_air_pkm: orgFacilityField("Perjalanan dinas (udara)", "Scope 3 — Rantai nilai lainnya", "pkm/tahun", "business_travel_air", { scopeLevel: "org" }),
+    waste_landfill_kg: orgFacilityField("Limbah ke TPA", "Scope 3 — Rantai nilai lainnya", "kg/tahun", "waste_landfill", { scopeLevel: "org" }),
+  },
+  "x-groups": [
+    "Scope 1 — Pembakaran langsung",
+    "Scope 2 — Energi tidak langsung",
+    "Scope 3 — Rantai nilai lainnya",
+  ],
+};
+
+interface OrgSpec { code: string; amount: number; unit: string; facility: string; region: string; }
+
+function orgToSpecs(inputs: any): OrgSpec[] {
+  const specs: OrgSpec[] = [];
+  const facilities = (inputs.facilities as any[]) ?? [];
+  facilities.forEach((fac, idx) => {
+    if (!fac || typeof fac !== "object") return;
+    const name = (fac.name || `Fasilitas ${idx + 1}`).toString().trim() || `Fasilitas ${idx + 1}`;
+    const region = fac.region || "GLOBAL";
+    for (const [field, [code, unit]] of Object.entries(ORG_FACILITY_MAP)) {
+      const raw = fac[field];
+      if (raw == null || raw === 0 || raw === "") continue;
+      specs.push({ code, amount: Number(raw), unit, facility: name, region });
+    }
+  });
+  for (const [field, [code, unit]] of Object.entries(ORG_LEVEL_MAP)) {
+    const raw = inputs[field];
+    if (raw == null || raw === 0 || raw === "") continue;
+    specs.push({ code, amount: Number(raw), unit, facility: ORG_WIDE, region: "GLOBAL" });
+  }
+  return specs;
+}
+
+function computeOrg(gwpName: string, inputs: any) {
+  const svc = gwpService(gwpName);
+  const specs = orgToSpecs(inputs);
+  const results: any[] = [];
+  for (const spec of specs) {
+    const fs = resolveFactors(spec.code, spec.region);
+    for (const f of fs) {
+      const denom = denominatorOf(f.unit);
+      const amountConv = convert(spec.amount, spec.unit, denom);
+      const gasMass = amountConv * f.value;
+      const gwpApplied = f.gwp_basis === "CO2e" ? 1.0 : gwpOf(svc, f.gas_id);
+      const co2e = gasMass * gwpApplied;
+      const relPct = relativeSdFromPct(f.uncertainty_pct);
+      const rel = relPct ?? relativeSdFromDist(f.dist_type, f.dist_params as any);
+      const unc = propagateProduct(co2e, [rel]);
+      const cat = categories[f.category_id];
+      results.push({
+        co2e_kg: co2e,
+        co2e_uncertainty: unc,
+        facility: spec.facility,
+        factor_snapshot: {
+          value: f.value, unit: f.unit, region: f.region, gwp_basis: f.gwp_basis,
+          gas: { symbol: f.gas_id },
+          source: { name: sources[f.source_id].name, credibility_tier: sources[f.source_id].credibility_tier },
+          gwp_set: { name: svc.name, horizon_years: svc.horizon_years, gwp_applied: gwpApplied },
+          category: { code: cat.code, name: cat.name, scope: cat.scope },
+        },
+      });
+    }
+  }
+  return aggregateOrg(results);
+}
+
+function aggregateOrg(results: any[]) {
+  const total = results.reduce((a, r) => a + r.co2e_kg, 0);
+
+  // Breakdown per kategori.
+  const groups: Record<string, any> = {};
+  for (const r of results) {
+    const cat = r.factor_snapshot.category;
+    const g = (groups[cat.code] ??= { code: cat.code, name: cat.name, co2e_kg: 0 });
+    g.co2e_kg += r.co2e_kg;
+  }
+  const breakdown = Object.values(groups).sort((a: any, b: any) => b.co2e_kg - a.co2e_kg);
+  for (const g of breakdown as any[]) g.share = total ? g.co2e_kg / total : 0;
+
+  // Scope rollup.
+  const byScope: Record<number, number> = {};
+  for (const r of results) {
+    const scope = r.factor_snapshot.category.scope;
+    if (scope == null) continue;
+    byScope[scope] = (byScope[scope] ?? 0) + r.co2e_kg;
+  }
+  const scope_rollup = Object.keys(byScope)
+    .map(Number).sort((a, b) => a - b)
+    .map((s) => ({ scope: s, label: SCOPE_LABELS[s] ?? `Scope ${s}`, co2e_kg: byScope[s], share: total ? byScope[s] / total : 0 }));
+
+  // Facility rollup.
+  const facAcc: Record<string, any> = {};
+  for (const r of results) {
+    const f = (facAcc[r.facility] ??= { name: r.facility, co2e_kg: 0, _by: {} as Record<number, number> });
+    f.co2e_kg += r.co2e_kg;
+    const scope = r.factor_snapshot.category.scope;
+    if (scope != null) f._by[scope] = (f._by[scope] ?? 0) + r.co2e_kg;
+  }
+  const facility_rollup = Object.values(facAcc).sort((a: any, b: any) => b.co2e_kg - a.co2e_kg);
+  for (const f of facility_rollup as any[]) {
+    f.share = total ? f.co2e_kg / total : 0;
+    f.by_scope = Object.keys(f._by).map(Number).sort((a, b) => a - b)
+      .map((s) => ({ scope: s, label: SCOPE_LABELS[s] ?? `Scope ${s}`, co2e_kg: f._by[s] }));
+    delete f._by;
+  }
+
+  // Ketidakpastian total.
+  let varSum = 0; let hasUnc = false;
+  for (const r of results) {
+    const sd = r.co2e_uncertainty?.sd;
+    if (sd != null) { varSum += sd * sd; hasUnc = true; }
+  }
+  let uncertainty = null;
+  if (hasUnc) {
+    const sd = Math.sqrt(varSum);
+    uncertainty = { mean: total, sd, ci_low: Math.max(0, total - 1.959963985 * sd), ci_high: total + 1.959963985 * sd };
+  }
+
+  const notes: string[] = [];
+  if (results.some((r) => r.factor_snapshot.region.startsWith("ID")))
+    notes.push("Sebagian faktor (mis. grid PLN) masih placeholder — lihat methodology.");
+  if (3 in byScope)
+    notes.push("Scope 3 baru sebagian (perjalanan dinas & limbah); kategori lain menyusul bertahap.");
+
+  return {
+    domain_id: "organizational", total_co2e_kg: total, total_co2e_tonnes: total / 1000,
+    uncertainty, breakdown, benchmarks: null, notes, scope_rollup, facility_rollup,
+  };
+}
+
 // ---------------- Factor CRUD (in-memory + localStorage) ----------------
 function now() { return new Date().toISOString(); }
 
@@ -296,11 +471,16 @@ export async function staticRequest<T>(method: string, path: string, body?: unkn
         .sort((a, b) => a.version - b.version)
         .map(embed) as T;
     }
-    if (p === "/domains") return [{ domain_id: "personal", title: PERSONAL_SCHEMA.title }] as T;
+    if (p === "/domains")
+      return [
+        { domain_id: "personal", title: PERSONAL_SCHEMA.title },
+        { domain_id: "organizational", title: ORG_SCHEMA.title },
+      ] as T;
     m = match(p, /^\/domains\/(.+)\/schema$/);
     if (m) {
-      if (m[1] !== "personal") throw new ApiError(404, "Domain belum tersedia");
-      return { input_schema: PERSONAL_SCHEMA, benchmarks: PERSONAL_BENCHMARKS } as T;
+      if (m[1] === "personal") return { input_schema: PERSONAL_SCHEMA, benchmarks: PERSONAL_BENCHMARKS } as T;
+      if (m[1] === "organizational") return { input_schema: ORG_SCHEMA, benchmarks: null } as T;
+      throw new ApiError(404, "Domain belum tersedia");
     }
   }
 
@@ -315,9 +495,15 @@ export async function staticRequest<T>(method: string, path: string, body?: unkn
     }
     m = match(p, /^\/domains\/(.+)\/calculate$/);
     if (m) {
-      if (m[1] !== "personal") throw new ApiError(404, "Domain belum tersedia");
-      const b = body as { region: string; gwp_set_name: string; inputs: Record<string, number> };
-      const report = computePersonal(b.region ?? "GLOBAL", b.gwp_set_name ?? "AR6", b.inputs ?? {});
+      const b = body as { region?: string; gwp_set_name?: string; inputs?: any };
+      let report: any;
+      if (m[1] === "personal") {
+        report = computePersonal(b.region ?? "GLOBAL", b.gwp_set_name ?? "AR6", b.inputs ?? {});
+      } else if (m[1] === "organizational") {
+        report = computeOrg(b.gwp_set_name ?? "AR6", b.inputs ?? {});
+      } else {
+        throw new ApiError(404, "Domain belum tersedia");
+      }
       if (report.breakdown.length === 0) throw new ApiError(422, "Tidak ada input yang bisa dihitung.");
       return { project_id: "local", run_id: crypto.randomUUID(), report } as T;
     }

@@ -4,7 +4,9 @@ Web app perhitungan emisi karbon (CO₂e) tingkat penelitian — **reproducible,
 traceable, uncertainty-aware**, dengan prioritas faktor emisi lokal Indonesia.
 Satu *core engine* + *domain modules* (Personal, Organizational, Sector, Product/LCA).
 
-Status: Phase 0 (core) + Phase 1 (Personal) selesai (lihat `docs/methodology.md`).
+Status: Phase 0 (core) + Phase 1 (Personal) + Phase 2a (Organizational — GHG Protocol
+Scope 1/2/3, multi-fasilitas) selesai (lihat `docs/methodology.md`). Berikutnya: Phase 2b
+(laporan PDF/Excel), lalu Phase 3 (Monte Carlo), 4 (Sector + IoT), 5 (Product/LCA).
 
 ## 🌐 Demo Live (browser, tanpa instal)
 

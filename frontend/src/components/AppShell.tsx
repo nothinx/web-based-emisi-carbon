@@ -6,7 +6,8 @@ import "./appshell.css";
 const STATIC = import.meta.env.VITE_STATIC === "1";
 
 const NAV = [
-  { to: "/calculator", label: "Kalkulator Personal", hint: "Hitung jejak karbon", group: "Phase 1 · Domain" },
+  { to: "/calculator", label: "Kalkulator Personal", hint: "Hitung jejak karbon", group: "Domain" },
+  { to: "/organizational", label: "GHG Organisasi", hint: "Scope 1/2/3 multi-fasilitas", group: "Domain" },
   { to: "/factors", label: "Emission Factors", hint: "Jantung registry", group: "Phase 0 · Core" },
   { to: "/sources", label: "Sources", hint: "Sumber & sitasi", group: "Phase 0 · Core" },
   { to: "/categories", label: "Categories", hint: "Kategori aktivitas", group: "Phase 0 · Core" },

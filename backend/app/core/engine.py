@@ -75,10 +75,17 @@ async def resolve_factors(
     factors = list((await session.execute(stmt)).scalars().all())
 
     if at is not None:
+        def _aware(dt: datetime | None) -> datetime | None:
+            # SQLite mengembalikan datetime naive; anggap UTC agar bisa dibandingkan.
+            if dt is not None and dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
+
         def _valid(f: EmissionFactor) -> bool:
-            if f.valid_from and f.valid_from > at:
+            vf, vt = _aware(f.valid_from), _aware(f.valid_to)
+            if vf and vf > at:
                 return False
-            if f.valid_to and f.valid_to < at:
+            if vt and vt < at:
                 return False
             return True
 
@@ -134,17 +141,24 @@ async def run_calculation(
         .all()
     )
 
+    # Tanggal acuan masa-berlaku faktor: akhir periode pelaporan; bila tak ada,
+    # akhir base year (relevan untuk inventarisasi Organizational per base year).
     at = None
     if project.reporting_period_end:
         at = datetime.combine(
             project.reporting_period_end, datetime.min.time(), tzinfo=timezone.utc
         )
+    elif project.base_year:
+        at = datetime(project.base_year, 12, 31, tzinfo=timezone.utc)
 
     results: list[CalculationResult] = []
     run.status = RunStatus.running.value
     try:
         for activity in activities:
-            factors = await resolve_factors(session, activity.category_id, project.region, at)
+            # Region per-aktivitas (mis. tiap fasilitas Organizational punya grid
+            # berbeda) bila diberikan di domain_fields; jika tidak, region project.
+            act_region = (activity.domain_fields or {}).get("region") or project.region
+            factors = await resolve_factors(session, activity.category_id, act_region, at)
             if not factors:
                 continue  # tidak ada faktor; aktivitas dilewati (dilaporkan di gap)
             for factor in factors:

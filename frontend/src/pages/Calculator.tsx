@@ -185,10 +185,12 @@ function Result({ data }: { data: CalcResponse }) {
         <div className="result-note">⚠ {r.notes.join(" ")}</div>
       ) : null}
 
-      <div className="result-block">
-        <h3>Dibanding rata-rata</h3>
-        <BenchmarkChart youTonnes={r.total_co2e_tonnes} benchmarks={r.benchmarks.values} />
-      </div>
+      {r.benchmarks ? (
+        <div className="result-block">
+          <h3>Dibanding rata-rata</h3>
+          <BenchmarkChart youTonnes={r.total_co2e_tonnes} benchmarks={r.benchmarks.values} />
+        </div>
+      ) : null}
 
       <div className="result-block">
         <h3>Rincian per kategori</h3>

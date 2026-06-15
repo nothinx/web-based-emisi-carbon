@@ -105,7 +105,10 @@ class PersonalDomain:
             )
         return specs
 
-    def aggregate(self, results: list[CalculationResult]) -> DomainReport:
+    def aggregate(
+        self, results: list[CalculationResult], activities: list | None = None
+    ) -> DomainReport:
+        # Personal tak butuh metadata aktivitas; agregasi cukup dari hasil.
         total = sum(r.co2e_kg for r in results)
 
         # Breakdown per kategori (dari snapshot beku).

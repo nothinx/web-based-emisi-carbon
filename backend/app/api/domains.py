@@ -22,6 +22,7 @@ class DomainCalcIn(BaseModel):
     name: str | None = None
     region: str = "GLOBAL"
     gwp_set_name: str = "AR6"
+    base_year: int | None = None        # relevan untuk Organizational
     inputs: dict = Field(default_factory=dict)
 
 
@@ -74,26 +75,28 @@ async def calculate_domain(
     # Buat project + activities (persist agar reproducible).
     project = Project(
         owner_id=user.id,
-        name=data.name or "Kalkulasi Personal",
+        name=data.name or f"Kalkulasi {domain_id}",
         domain=domain_id,
         region=data.region,
+        base_year=data.base_year,
         gwp_set_id=gwp_set.id,
     )
     session.add(project)
     await session.flush()
 
+    activities: list[ActivityRecord] = []
     for s in specs:
-        session.add(
-            ActivityRecord(
-                project_id=project.id,
-                category_id=cats[s.category_code].id,
-                amount=s.amount,
-                unit=s.unit,
-                period=s.period,
-                domain_fields=s.domain_fields,
-                data_origin="manual",
-            )
+        act = ActivityRecord(
+            project_id=project.id,
+            category_id=cats[s.category_code].id,
+            amount=s.amount,
+            unit=s.unit,
+            period=s.period,
+            domain_fields=s.domain_fields,
+            data_origin="manual",
         )
+        session.add(act)
+        activities.append(act)
     await session.flush()
 
     run = CalculationRun(
@@ -108,7 +111,7 @@ async def calculate_domain(
     results = await run_calculation(session, run)
     await session.commit()
 
-    report = domain.aggregate(results)
+    report = domain.aggregate(results, activities)
     return {
         "project_id": str(project.id),
         "run_id": str(run.id),

@@ -1,6 +1,42 @@
-import type { BreakdownItem } from "../lib/domainTypes";
+import type { BreakdownItem, ScopeRollupItem } from "../lib/domainTypes";
 import { fmtNumber } from "../lib/format";
 import "./charts.css";
+
+const SCOPE_COLOR: Record<number, string> = {
+  1: "var(--c-scope1)",
+  2: "var(--c-scope2)",
+  3: "var(--c-scope3)",
+};
+
+// Rollup GHG Protocol: stacked bar komposisi scope + rincian per scope.
+export function ScopeRollup({ items }: { items: ScopeRollupItem[] }) {
+  return (
+    <div className="scope-rollup">
+      <div className="scope-stack" role="img" aria-label="Komposisi emisi per scope">
+        {items.map((s) => (
+          <div
+            key={s.scope}
+            className="scope-seg"
+            style={{ width: `${Math.max(s.share * 100, 0.5)}%`, background: SCOPE_COLOR[s.scope] }}
+            title={`${s.label}: ${(s.share * 100).toFixed(1)}%`}
+          />
+        ))}
+      </div>
+      <div className="scope-legend">
+        {items.map((s) => (
+          <div className="scope-row" key={s.scope}>
+            <span className="scope-dot" style={{ background: SCOPE_COLOR[s.scope] }} />
+            <span className="scope-name">{s.label}</span>
+            <span className="scope-val mono">
+              {fmtNumber(s.co2e_kg / 1000)} <span className="bd-unit">tCO₂e</span>
+            </span>
+            <span className="scope-share mono">{(s.share * 100).toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const PALETTE = [
   "var(--c-co2)",

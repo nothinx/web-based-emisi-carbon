@@ -30,7 +30,11 @@ class ActivitySpec:
 
 @dataclass
 class DomainReport:
-    """Output teragregasi per domain. Bentuk agregasi berbeda tiap domain."""
+    """Output teragregasi per domain. Bentuk agregasi berbeda tiap domain.
+
+    `scope_rollup` & `facility_rollup` opsional — relevan untuk Organizational
+    (GHG Protocol Scope 1/2/3, multi-fasilitas); domain lain membiarkannya None.
+    """
 
     domain_id: str
     total_co2e_kg: float
@@ -39,6 +43,8 @@ class DomainReport:
     breakdown: list[dict]                # per kategori: {code,name,co2e_kg,share}
     benchmarks: dict | None              # perbandingan per-kapita dll
     notes: list[str] = field(default_factory=list)
+    scope_rollup: list[dict] | None = None     # per scope: {scope,label,co2e_kg,share}
+    facility_rollup: list[dict] | None = None  # per fasilitas: {name,co2e_kg,share,by_scope}
 
 
 @runtime_checkable
@@ -48,4 +54,8 @@ class DomainModule(Protocol):
     benchmarks: dict | None
 
     def to_activities(self, raw_input: dict) -> list[ActivitySpec]: ...
-    def aggregate(self, results: list[CalculationResult]) -> DomainReport: ...
+    def aggregate(
+        self,
+        results: list[CalculationResult],
+        activities: list | None = None,
+    ) -> DomainReport: ...

@@ -1,7 +1,7 @@
 # Methodology — Carbon Emission Engine
 
 Dokumen ini dijaga **seiring jalan**: setiap faktor, sumber, asumsi, dan batasan
-dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 0.
+dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 2 (Organizational).
 
 ## 1. Prinsip
 
@@ -40,7 +40,11 @@ diperlukan ketelitian sumber emisi.
     CO₂e via GWP set terpilih.
 - Resolusi faktor: per `(kategori, region)` dengan **fallback GLOBAL** bila faktor
   regional tidak ada; satu faktor per gas (region spesifik mengalahkan GLOBAL).
-  Filter masa berlaku memakai `reporting_period_end` proyek bila ada.
+  Region dapat ditentukan **per aktivitas** lewat `domain_fields.region` (mis. tiap
+  fasilitas Organizational punya grid berbeda); jika tidak ada, dipakai region proyek.
+- Filter masa berlaku faktor (`valid_from`/`valid_to`) memakai akhir
+  `reporting_period_end`; bila kosong, jatuh ke akhir `base_year` proyek (relevan
+  untuk inventarisasi Organizational per base year).
 
 ## 4. Uncertainty (Phase awal: analitis)
 
@@ -82,6 +86,30 @@ Propagasi Gaussian untuk perkalian: relative-errors dikombinasikan kuadrat
 | natural_gas | CH₄ | 0.000256 | kgCH4/kWh | GLOBAL | defra_2024 | ±50% | per-gas → ×GWP |
 | natural_gas | N₂O | 0.0000307 | kgN2O/kWh | GLOBAL | defra_2024 | ±50% | per-gas → ×GWP |
 
+## 5b. Domain (Phase 1–2)
+
+### Personal (Phase 1)
+Input tahunan (bulanan ×12, mingguan ×52) → aktivitas; strategy Multiply. Output:
+total tCO₂e/tahun, breakdown per kategori, perbandingan benchmark per-kapita
+(indikatif: rata-rata Indonesia 2.3, dunia 4.7, target 2030 ~2.0 — perlu sitasi resmi).
+
+### Organizational (Phase 2) — GHG Protocol Corporate
+Mengikuti **GHG Protocol Corporate Standard**: emisi dikelompokkan ke
+**Scope 1/2/3**. Scope tiap hasil ditentukan dari `category.scope` pada snapshot beku
+(traceable, bukan dihardcode di kode domain).
+
+- **Scope 1** (emisi langsung): `natural_gas`, `diesel_stationary`, `lpg` (pembakaran
+  stasioner). Faktor `natural_gas` per-gas (CO₂+CH₄+N₂O) → dikonversi via GWP set.
+- **Scope 2** (energi tidak langsung): `elec_grid` — **faktor grid PLN regional per
+  fasilitas** (ID-Jamali 0.87, ID-Sumatera 1.18 kgCO₂e/kWh; placeholder).
+- **Scope 3** (rantai nilai): `business_travel_air` & `waste_landfill` — level
+  organisasi (lintas-fasilitas). **Baru sebagian** dari 15 kategori GHG Protocol.
+
+Fitur: **multi-fasilitas** (region grid sendiri per fasilitas), **base year**
+(jadi acuan masa-berlaku faktor bila periode pelaporan kosong). Output: rollup per
+scope + rollup per fasilitas (+ rincian per scope) + breakdown per kategori.
+Agregasi ketidakpastian sama seperti Personal (kombinasi sd² antar hasil).
+
 ## 6. Batasan (Limitations)
 
 - **Faktor grid Indonesia adalah placeholder** — ganti dengan faktor resmi
@@ -92,11 +120,19 @@ Propagasi Gaussian untuk perkalian: relative-errors dikombinasikan kuadrat
   `ActivityRecord.activity_uncertainty`).
 - **DEFRA dipakai sebagai fallback** untuk konteks Indonesia — sah untuk faktor
   generik (kendaraan, LPG), kurang ideal untuk yang sangat lokal.
-- Domain Organizational (Scope 1/2/3 penuh), Sector (IPCC Tier), dan Product/LCA
-  menyusul di Phase 2/4/5. LCA v1 akan **parametrik** dan dinyatakan sebagai
-  limitation, bukan klaim akurasi LCA penuh.
+- **Scope 3 Organizational baru sebagian** (perjalanan dinas udara & limbah TPA);
+  13 kategori GHG Protocol lainnya menyusul bertahap.
+- **Laporan PDF/Excel + methodology appendix** (export) direncanakan **Phase 2b**.
+- Sector (IPCC Tier) & Product/LCA menyusul di Phase 4/5. LCA v1 akan **parametrik**
+  dan dinyatakan sebagai limitation, bukan klaim akurasi LCA penuh.
 
 ## 7. Riwayat
 - **Phase 0** — core scaffolding: data model, engine + MultiplyStrategy,
   provenance/immutability, factor registry + CRUD UI, seed 15 faktor contoh,
   uji reproducibility.
+- **Phase 1** — domain Personal end-to-end: form dinamis dari JSON Schema,
+  agregasi per-kapita + benchmark, visualisasi breakdown.
+- **Phase 2a** — domain Organizational (GHG Protocol): Scope 1/2/3, multi-fasilitas
+  dengan grid regional per fasilitas, base year, rollup per scope & per fasilitas,
+  region per-aktivitas di engine, port ke build statis. Uji reproducibility +
+  rollup scope. (Phase 2b: export PDF/Excel.)

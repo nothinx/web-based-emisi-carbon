@@ -77,8 +77,43 @@
   margin-top: 2px;
 }
 
+/* --- Scope rollup (GHG Protocol) --- */
+.scope-rollup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.scope-stack {
+  display: flex;
+  height: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.scope-seg {
+  height: 100%;
+  transform-origin: left;
+  animation: bd-grow 0.6s var(--ease-out-expo) backwards;
+}
+.scope-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.scope-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: 13px;
+}
+.scope-dot { width: 9px; height: 9px; border-radius: 2px; }
+.scope-name { color: var(--ink); font-weight: 450; }
+.scope-val { color: var(--ink-2); }
+.scope-share { color: var(--muted); min-width: 48px; text-align: right; }
+
 @media (prefers-reduced-motion: reduce) {
-  .bd-row, .bd-fill, .bench-fill { animation: none; }
+  .bd-row, .bd-fill, .bench-fill, .scope-seg { animation: none; }
 }
 
 @media (max-width: 560px) {

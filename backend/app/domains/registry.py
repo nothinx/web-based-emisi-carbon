@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from app.domains.base import DomainModule
+from app.domains.organizational import OrganizationalDomain
 from app.domains.personal import PersonalDomain
 
 DOMAINS: dict[str, DomainModule] = {
     PersonalDomain.domain_id: PersonalDomain(),
-    # Phase 2: organizational; Phase 4: sector; Phase 5: product.
+    OrganizationalDomain.domain_id: OrganizationalDomain(),
+    # Phase 4: sector; Phase 5: product.
 }
 
 

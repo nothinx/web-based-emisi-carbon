@@ -1,10 +1,13 @@
 // Tipe untuk domain calculator (schema dinamis + report).
 
 export interface UiMeta {
-  group: string;
-  unit: string;
+  group?: string;
+  unit?: string;
   help?: string;
   placeholder?: string;
+  widget?: "text" | "region" | "facilities";  // non-numerik / array (Organizational)
+  category?: string;                            // kode kategori faktor (data-driven)
+  scopeLevel?: "org";                           // field level-organisasi (lintas-fasilitas)
 }
 
 export interface SchemaProperty {
@@ -12,12 +15,14 @@ export interface SchemaProperty {
   title: string;
   minimum?: number;
   "x-ui"?: UiMeta;
+  items?: { properties: Record<string, SchemaProperty> };  // untuk type: "array"
 }
 
 export interface InputSchema {
   title: string;
   properties: Record<string, SchemaProperty>;
   "x-groups"?: string[];
+  "x-domain"?: string;
 }
 
 export interface Benchmarks {
@@ -46,14 +51,30 @@ export interface Uncertainty {
   ci_high: number | null;
 }
 
+export interface ScopeRollupItem {
+  scope: number;
+  label: string;
+  co2e_kg: number;
+  share: number;
+}
+
+export interface FacilityRollupItem {
+  name: string;
+  co2e_kg: number;
+  share: number;
+  by_scope: { scope: number; label: string; co2e_kg: number }[];
+}
+
 export interface DomainReport {
   domain_id: string;
   total_co2e_kg: number;
   total_co2e_tonnes: number;
   uncertainty: Uncertainty | null;
   breakdown: BreakdownItem[];
-  benchmarks: Benchmarks;
+  benchmarks: Benchmarks | null;
   notes: string[];
+  scope_rollup?: ScopeRollupItem[] | null;
+  facility_rollup?: FacilityRollupItem[] | null;
 }
 
 export interface CalcResponse {
