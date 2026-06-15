@@ -1,0 +1,189 @@
+.calc-grid {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: var(--s-8);
+  align-items: start;
+}
+
+/* Form */
+.calc-context {
+  display: flex;
+  gap: var(--s-4);
+  margin-bottom: var(--s-6);
+}
+.ctx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+.ctx-field span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.calc-group {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s-4) var(--s-6) var(--s-6);
+  margin: 0 0 var(--s-4);
+  background: var(--surface);
+}
+.calc-group legend {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 0 var(--s-2);
+}
+.calc-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+}
+.calc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.calc-field-label {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.calc-input {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--bg);
+  transition: border-color var(--dur), box-shadow var(--dur);
+}
+.calc-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.calc-input input {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 var(--s-3);
+  height: 36px;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink);
+}
+.calc-unit {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--s-3);
+  background: var(--surface-2);
+  border-left: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.calc-help {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Result */
+.calc-result {
+  position: sticky;
+  top: var(--s-6);
+}
+.result-placeholder {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-lg);
+  padding: var(--s-12) var(--s-6);
+  text-align: center;
+  color: var(--muted);
+}
+.rp-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  margin-bottom: var(--s-4);
+}
+.rp-mark sub { font-size: 0.7em; }
+.result-placeholder p { margin: 0 auto; max-width: 36ch; font-size: 13px; }
+
+.result {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.result-hero {
+  padding: var(--s-6);
+  background: linear-gradient(180deg, var(--accent-soft), transparent);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rh-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.rh-value {
+  font-size: 2.6rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+}
+.rh-unit { font-size: 0.85rem; color: var(--muted); font-weight: 400; }
+.rh-ci { font-size: 12px; color: var(--ink-2); }
+
+.result-note {
+  margin: var(--s-4) var(--s-6) 0;
+  background: var(--warning-soft);
+  color: oklch(0.45 0.12 65);
+  border-radius: var(--r-md);
+  padding: var(--s-2) var(--s-3);
+  font-size: 12px;
+}
+.result-block {
+  padding: var(--s-6);
+  border-bottom: 1px solid var(--border);
+}
+.result-block h3 {
+  font-size: 0.9rem;
+  margin-bottom: var(--s-4);
+  color: var(--ink-2);
+}
+.result-foot {
+  padding: var(--s-3) var(--s-6);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+
+@media (max-width: 1040px) {
+  .calc-grid { grid-template-columns: 1fr; }
+  .calc-result { position: static; }
+}
+@media (max-width: 560px) {
+  .calc-fields { grid-template-columns: 1fr; }
+  .calc-context { flex-direction: column; }
+}

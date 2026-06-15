@@ -1,0 +1,86 @@
+/* --- Breakdown bars --- */
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.bd-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: bd-in 0.4s var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i) * 50ms);
+}
+.bd-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: 13px;
+}
+.bd-dot { width: 9px; height: 9px; border-radius: 2px; }
+.bd-name { color: var(--ink); font-weight: 450; }
+.bd-val { color: var(--ink-2); }
+.bd-unit { color: var(--muted); font-size: 0.85em; }
+.bd-share { color: var(--muted); min-width: 48px; text-align: right; }
+.bd-track {
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bd-fill {
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left;
+  animation: bd-grow 0.6s var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i) * 50ms + 80ms);
+}
+@keyframes bd-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes bd-grow { from { transform: scaleX(0); } }
+
+/* --- Benchmark --- */
+.bench {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.bench-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 56px;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: 13px;
+}
+.bench-label { color: var(--ink-2); }
+.bench-track {
+  height: 22px;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.bench-fill {
+  height: 100%;
+  background: var(--border-strong);
+  border-radius: var(--r-sm);
+  animation: bd-grow 0.6s var(--ease-out-expo) backwards;
+  transform-origin: left;
+}
+.bench-val { color: var(--ink-2); text-align: right; }
+.bench-row.is-you .bench-label { color: var(--ink); font-weight: 600; }
+.bench-row.is-you .bench-fill { background: var(--primary); }
+.bench-row.is-you .bench-val { color: var(--primary-strong); font-weight: 600; }
+.bench-axis {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  margin-top: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bd-row, .bd-fill, .bench-fill { animation: none; }
+}
+
+@media (max-width: 560px) {
+  .bench-row { grid-template-columns: 110px 1fr 48px; }
+}

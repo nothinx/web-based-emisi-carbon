@@ -1,0 +1,39 @@
+[project]
+name = "carbon-engine"
+version = "0.1.0"
+description = "Research-grade multi-domain carbon emission calculator (core + domain modules)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.6",
+    "email-validator>=2.2",     # untuk pydantic EmailStr
+    "aiosqlite>=0.20",          # SQLite async driver (dev)
+    "python-multipart>=0.0.12",
+    "python-jose[cryptography]>=3.3",  # JWT
+    "passlib>=1.7",             # pbkdf2_sha256 (pure-python, tanpa build bcrypt)
+    "numpy>=2.1",               # uncertainty / Monte Carlo (Phase 3)
+]
+
+[project.optional-dependencies]
+postgres = ["asyncpg>=0.30", "psycopg[binary]>=3.2"]
+report = ["weasyprint>=63", "openpyxl>=3.1"]  # PDF/Excel export (Phase 2)
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "httpx>=0.28", "ruff>=0.8"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

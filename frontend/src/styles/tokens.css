@@ -1,0 +1,76 @@
+/* Design tokens — "scientific instrument". OKLCH. Lihat DESIGN.md. */
+:root {
+  /* Neutrals & surfaces */
+  --bg: oklch(1 0 0);
+  --surface: oklch(0.985 0.002 255);
+  --surface-2: oklch(0.965 0.003 255);
+  --border: oklch(0.912 0.004 255);
+  --border-strong: oklch(0.84 0.006 255);
+
+  /* Ink ramp (teks) */
+  --ink: oklch(0.24 0.012 255);
+  --ink-2: oklch(0.4 0.014 255);
+  --muted: oklch(0.48 0.015 255);
+
+  /* Brand & accent */
+  --primary: oklch(0.7 0.146 75);
+  --primary-strong: oklch(0.52 0.12 70);
+  --primary-ink: oklch(0.26 0.05 75); /* teks di atas --primary */
+  --accent: oklch(0.5 0.11 245);
+  --accent-soft: oklch(0.95 0.02 245);
+  --accent-ring: oklch(0.5 0.11 245 / 0.4);
+
+  /* Semantic */
+  --success: oklch(0.55 0.11 150);
+  --success-soft: oklch(0.95 0.03 150);
+  --warning: oklch(0.66 0.14 75);
+  --warning-soft: oklch(0.95 0.045 80);
+  --danger: oklch(0.55 0.18 27);
+  --danger-soft: oklch(0.95 0.04 27);
+
+  /* Data-viz categorical */
+  --c-co2: oklch(0.55 0.12 245);
+  --c-ch4: oklch(0.7 0.146 75);
+  --c-n2o: oklch(0.55 0.12 300);
+  --c-scope1: oklch(0.58 0.13 35);
+  --c-scope2: oklch(0.55 0.12 245);
+  --c-scope3: oklch(0.6 0.1 195);
+
+  /* Typography */
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+
+  /* Spacing (base 4px) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* Radius */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+
+  /* Elevation (halus, instrumen) */
+  --shadow-sm: 0 1px 2px oklch(0.24 0.012 255 / 0.06);
+  --shadow-md: 0 4px 16px oklch(0.24 0.012 255 / 0.08), 0 1px 3px oklch(0.24 0.012 255 / 0.06);
+  --shadow-lg: 0 12px 40px oklch(0.24 0.012 255 / 0.14);
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+
+  /* z-index scale semantik */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}
