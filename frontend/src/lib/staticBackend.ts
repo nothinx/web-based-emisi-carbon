@@ -488,6 +488,111 @@ function aggregateOrg(results: any[]) {
   };
 }
 
+// ---------------- Sector domain (mirror app/domains/sector.py + IPCC strategies) ----------------
+const SECTOR_SCHEMA = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  title: "Sektor — Pertanian & Energi (IPCC)",
+  type: "object",
+  "x-domain": "sector",
+  properties: {
+    cattle_head: { type: "number", minimum: 0, title: "Populasi sapi",
+      "x-ui": { group: "Peternakan", unit: "ekor", help: "Emisi enterik (CH₄) + manure (N₂O), IPCC Tier 1." } },
+    fertilizer_n_kg: { type: "number", minimum: 0, title: "Pupuk N sintetis",
+      "x-ui": { group: "Pertanian", unit: "kg N/tahun", help: "Massa nitrogen (bukan massa pupuk). N₂O langsung Tier 1." } },
+    rice_area_ha: { type: "number", minimum: 0, title: "Luas sawah",
+      "x-ui": { group: "Pertanian", unit: "ha/musim", help: "CH₄ sawah per ha per musim." } },
+    electricity_kwh: { type: "number", minimum: 0, title: "Listrik (pompa/operasi)",
+      "x-ui": { group: "Energi", unit: "kWh/tahun" } },
+    diesel_l: { type: "number", minimum: 0, title: "Solar (mesin/genset)",
+      "x-ui": { group: "Energi", unit: "L/tahun" } },
+  },
+  "x-groups": ["Peternakan", "Pertanian", "Energi"],
+};
+
+const SECTOR_AGRI = new Set(["enteric_cattle", "manure_cattle", "fert_synthetic_n", "rice_cultivation"]);
+const MJ_PER_KG_CH4 = 55.65;
+const N_TO_N2O = 44 / 28;
+
+function relOf(f: EmissionFactor): number | null {
+  return relativeSdFromPct(f.uncertainty_pct) ?? relativeSdFromDist(f.dist_type, f.dist_params as any);
+}
+
+function computeSector(gwpName: string, inputs: any, opts?: CalcOpts) {
+  const svc = gwpService(gwpName);
+  const results: any[] = [];
+
+  const pushMultiply = (code: string, amount: number, unit: string) => {
+    for (const f of resolveFactors(code, "GLOBAL")) {
+      const denom = denominatorOf(f.unit);
+      const amountConv = convert(amount, unit, denom);
+      const gwpApplied = f.gwp_basis === "CO2e" ? 1.0 : gwpOf(svc, f.gas_id);
+      const co2e = amountConv * f.value * gwpApplied;
+      results.push({
+        co2e_kg: co2e,
+        co2e_uncertainty: propagateProduct(co2e, [relOf(f)]),
+        factor_snapshot: makeSnapshot(f, svc, gwpApplied),
+      });
+    }
+  };
+
+  const cattle = Number(inputs.cattle_head) || 0;
+  if (cattle > 0) {
+    // Enterik CH4 (IPCC Tier 1 default per ekor; Tier 2 bila meta ge/ym ada).
+    for (const f of resolveFactors("enteric_cattle", "GLOBAL")) {
+      const meta = (f.meta ?? {}) as any;
+      const ge = meta.ge_mj_per_day, ym = meta.ym_pct;
+      const ef = ge != null && ym != null ? (ge * (ym / 100) * 365) / MJ_PER_KG_CH4 : f.value;
+      const gwpApplied = gwpOf(svc, "CH4");
+      const co2e = cattle * ef * gwpApplied;
+      results.push({ co2e_kg: co2e, co2e_uncertainty: propagateProduct(co2e, [relOf(f)]), factor_snapshot: makeSnapshot(f, svc, gwpApplied) });
+    }
+    // Manure N2O (Tier 1): pop × Nex × MS × EF3 × 44/28.
+    for (const f of resolveFactors("manure_cattle", "GLOBAL")) {
+      const meta = (f.meta ?? {}) as any;
+      const nex = meta.nex_kg_per_head_yr ?? 0;
+      const ms = meta.ms_fraction ?? 1.0;
+      const gwpApplied = gwpOf(svc, "N2O");
+      const co2e = cattle * nex * ms * f.value * N_TO_N2O * gwpApplied;
+      results.push({ co2e_kg: co2e, co2e_uncertainty: propagateProduct(co2e, [relOf(f)]), factor_snapshot: makeSnapshot(f, svc, gwpApplied) });
+    }
+  }
+  if (Number(inputs.fertilizer_n_kg) > 0) pushMultiply("fert_synthetic_n", Number(inputs.fertilizer_n_kg), "kgN");
+  if (Number(inputs.rice_area_ha) > 0) pushMultiply("rice_cultivation", Number(inputs.rice_area_ha), "ha");
+  if (Number(inputs.electricity_kwh) > 0) pushMultiply("elec_grid", Number(inputs.electricity_kwh), "kWh");
+  if (Number(inputs.diesel_l) > 0) pushMultiply("diesel_stationary", Number(inputs.diesel_l), "L");
+
+  return finalizeReport(aggregateSector(results), results, opts);
+}
+
+function aggregateSector(results: any[]) {
+  const total = results.reduce((a, r) => a + r.co2e_kg, 0);
+  const groups: Record<string, any> = {};
+  for (const r of results) {
+    const cat = r.factor_snapshot.category;
+    const g = (groups[cat.code] ??= { code: cat.code, name: cat.name, co2e_kg: 0 });
+    g.co2e_kg += r.co2e_kg;
+  }
+  const breakdown = Object.values(groups).sort((a: any, b: any) => b.co2e_kg - a.co2e_kg);
+  for (const g of breakdown as any[]) g.share = total ? g.co2e_kg / total : 0;
+
+  let varSum = 0; let hasUnc = false;
+  for (const r of results) {
+    const sd = r.co2e_uncertainty?.sd;
+    if (sd != null) { varSum += sd * sd; hasUnc = true; }
+  }
+  let uncertainty = null;
+  if (hasUnc) {
+    const sd = Math.sqrt(varSum);
+    uncertainty = { mean: total, sd, ci_low: Math.max(0, total - 1.959963985 * sd), ci_high: total + 1.959963985 * sd };
+  }
+
+  const agri = (breakdown as any[]).filter((g) => SECTOR_AGRI.has(g.code)).reduce((a, g) => a + g.co2e_kg, 0);
+  const notes = ["Metode IPCC Tier 1 (faktor default, banyak placeholder) — sesuaikan untuk publikasi."];
+  if (total) notes.push(`Komposisi: pertanian ${Math.round((agri / total) * 100)}% · energi ${Math.round(((total - agri) / total) * 100)}%.`);
+
+  return { domain_id: "sector", total_co2e_kg: total, total_co2e_tonnes: total / 1000, uncertainty, breakdown, benchmarks: null, notes };
+}
+
 // ---------------- Factor CRUD (in-memory + localStorage) ----------------
 function now() { return new Date().toISOString(); }
 
@@ -557,11 +662,13 @@ export async function staticRequest<T>(method: string, path: string, body?: unkn
       return [
         { domain_id: "personal", title: PERSONAL_SCHEMA.title },
         { domain_id: "organizational", title: ORG_SCHEMA.title },
+        { domain_id: "sector", title: SECTOR_SCHEMA.title },
       ] as T;
     m = match(p, /^\/domains\/(.+)\/schema$/);
     if (m) {
       if (m[1] === "personal") return { input_schema: PERSONAL_SCHEMA, benchmarks: PERSONAL_BENCHMARKS } as T;
       if (m[1] === "organizational") return { input_schema: ORG_SCHEMA, benchmarks: null } as T;
+      if (m[1] === "sector") return { input_schema: SECTOR_SCHEMA, benchmarks: null } as T;
       throw new ApiError(404, "Domain belum tersedia");
     }
   }
@@ -591,6 +698,8 @@ export async function staticRequest<T>(method: string, path: string, body?: unkn
         report = computePersonal(b.region ?? "GLOBAL", b.gwp_set_name ?? "AR6", b.inputs ?? {}, opts);
       } else if (m[1] === "organizational") {
         report = computeOrg(b.gwp_set_name ?? "AR6", b.inputs ?? {}, opts);
+      } else if (m[1] === "sector") {
+        report = computeSector(b.gwp_set_name ?? "AR6", b.inputs ?? {}, opts);
       } else {
         throw new ApiError(404, "Domain belum tersedia");
       }

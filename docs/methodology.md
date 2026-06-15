@@ -1,7 +1,7 @@
 # Methodology — Carbon Emission Engine
 
 Dokumen ini dijaga **seiring jalan**: setiap faktor, sumber, asumsi, dan batasan
-dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 3 (uncertainty + scenario).
+dicatat agar hasil dapat dipertahankan secara akademik. Versi: Phase 4 (Sector + IoT).
 
 ## 1. Prinsip
 
@@ -102,6 +102,10 @@ Proyeksi analitis di atas baseline; tak menyentuh faktor live.
 | natural_gas | CO₂ | 0.18316 | kgCO2/kWh | GLOBAL | defra_2024 | ±3% | per-gas (GWP=1) |
 | natural_gas | CH₄ | 0.000256 | kgCH4/kWh | GLOBAL | defra_2024 | ±50% | per-gas → ×GWP |
 | natural_gas | N₂O | 0.0000307 | kgN2O/kWh | GLOBAL | defra_2024 | ±50% | per-gas → ×GWP |
+| enteric_cattle | CH₄ | 68 | kgCH4/head | GLOBAL | ipcc_2019 | ±30% | PLACEHOLDER EF Tier 1/ekor/thn (sapi perah) |
+| manure_cattle | N₂O | 0.005 | kgN2O-N/kgN | GLOBAL | ipcc_2019 | ±50% | PLACEHOLDER EF3; Nex=60, MS=1.0 (meta) |
+| fert_synthetic_n | N₂O | 0.015714 | kgN2O/kgN | GLOBAL | ipcc_2019 | ±60% | EF1 0.01 ×44/28 (N₂O langsung Tier 1) |
+| rice_cultivation | CH₄ | 143 | kgCH4/ha | GLOBAL | ipcc_2019 | ±50% | PLACEHOLDER Tier 1/ha/musim |
 
 ## 5b. Domain (Phase 1–2)
 
@@ -145,6 +149,27 @@ live, dan jalan identik di demo statis.
   demo statis (yang tak punya backend). Demo statis mengunduh **CSV** (client-side)
   sebagai ganti `.xlsx`.
 
+### Sector (Phase 4) — Pertanian & Energi (IPCC tier)
+Strategy pattern menambah metode IPCC (bukan perkalian tunggal), dipilih per kategori:
+
+- **CH₄ fermentasi enterik** (`ipcc.enteric.v2`, kategori `enteric_*`): Tier 1 pakai
+  `factor.value` (EF kg CH₄/ekor/thn); **Tier 2** bila `domain_fields` memberi gross
+  energy & Ym: `EF = GE × (Ym/100) × 365 / 55.65`. CH₄ = populasi × EF → CO₂e via GWP.
+- **N₂O manure** (`ipcc.manure_n2o.v1`, kategori `manure_*`, Tier 1):
+  `N₂O = populasi × Nex × MS × EF3 × 44/28`. Nex/MS dari meta faktor atau domain_fields,
+  EF3 = `factor.value`.
+- **N₂O pupuk sintetis** & **CH₄ sawah**: MultiplyStrategy dgn faktor ber-unit
+  `kgN2O/kgN` (sudah termasuk 44/28) dan `kgCH4/ha`.
+- **Energi**: reuse faktor `elec_grid` & `diesel_stationary`.
+
+Satu input populasi sapi → dua aktivitas (enterik + manure). Parameter Tier disimpan
+sebagai meta faktor (bersitasi IPCC 2019) & terekam di `assumptions` hasil (reproducible).
+
+**IoT ingestion** — `POST /ingest` (satu) & `POST /ingest/batch` (stream, ≤5000 reading,
+satu transaksi), auth **API key** terpisah (mesin). Sensor → `ActivityRecord`
+(`data_origin=sensor`, `sensor_id` di domain_fields) pada project target; lalu masuk
+run kalkulasi seperti data manual.
+
 ## 6. Batasan (Limitations)
 
 - **Faktor grid Indonesia adalah placeholder** — ganti dengan faktor resmi
@@ -160,8 +185,10 @@ live, dan jalan identik di demo statis.
 - **PDF tidak digenerate server-side** — memakai cetak HTML browser (Save as PDF).
   Untuk PDF otomatis di pipeline (mis. batch/headless), pertimbangkan headless Chrome
   atau install runtime GTK agar WeasyPrint jalan; di luar lingkup env saat ini.
-- Sector (IPCC Tier) & Product/LCA menyusul di Phase 4/5. LCA v1 akan **parametrik**
-  dan dinyatakan sebagai limitation, bukan klaim akurasi LCA penuh.
+- **Sector mayoritas Tier 1** dgn faktor default/placeholder (EF enterik, EF3 manure,
+  CH₄ sawah). **LULUCF belum** dimodelkan. Tier 2/3 & faktor lokal Indonesia menyusul.
+- Product/LCA menyusul di Phase 5. LCA v1 akan **parametrik** dan dinyatakan sebagai
+  limitation, bukan klaim akurasi LCA penuh.
 
 ## 7. Riwayat
 - **Phase 0** — core scaffolding: data model, engine + MultiplyStrategy,
@@ -181,3 +208,6 @@ live, dan jalan identik di demo statis.
   default 10k iter) di domain calculate (toggle Analitis/Monte Carlo di UI), sensitivity
   (share-varians per kategori), scenario what-if (`/scenarios/{sid}/run`). Port MC
   (mulberry32) + sensitivity ke build statis. 30 backend test (+6 phase 3).
+- **Phase 4** — Sector (Tani/Energi): strategy IPCC enterik CH₄ (Tier 1/2) & manure
+  N₂O (Tier 1), pupuk N₂O & sawah CH₄ (multiply), energi reuse; domain Sector + UI;
+  IoT ingestion batch (`/ingest/batch`). Port ke build statis. 36 backend test (+6).

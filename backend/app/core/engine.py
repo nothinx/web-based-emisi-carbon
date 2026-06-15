@@ -113,6 +113,7 @@ def _compute_one(
         factor=factor,
         gas=gas,
         ctx=ctx,
+        domain_fields=activity.domain_fields,
     )
 
 

@@ -45,6 +45,15 @@
       "year": 2023,
       "credibility_tier": 2,
       "notes": "PLACEHOLDER rata-rata dunia untuk fallback GLOBAL."
+    },
+    {
+      "key": "ipcc_2019",
+      "name": "IPCC 2019 Refinement to the 2006 Guidelines, Vol.4 (AFOLU)",
+      "publisher": "IPCC",
+      "url": "https://www.ipcc-nggip.iges.or.jp/public/2019rf/",
+      "year": 2019,
+      "credibility_tier": 1,
+      "notes": "Faktor & parameter Tier 1 sektor pertanian (enterik, manure, pupuk, sawah). Nilai default regional — sesuaikan untuk publikasi."
     }
   ],
   "gases": [
@@ -61,7 +70,7 @@
      "values": {"CO2": 1, "CH4": 25, "N2O": 298}}
   ],
   "categories": [
-    {"code": "elec_grid", "name": "Listrik jaringan (grid)", "domain_applicability": ["personal", "organizational"], "scope": 2, "default_unit": "kWh"},
+    {"code": "elec_grid", "name": "Listrik jaringan (grid)", "domain_applicability": ["personal", "organizational", "sector"], "scope": 2, "default_unit": "kWh"},
     {"code": "car_petrol", "name": "Mobil bensin", "domain_applicability": ["personal"], "default_unit": "km"},
     {"code": "motorcycle", "name": "Sepeda motor", "domain_applicability": ["personal"], "default_unit": "km"},
     {"code": "flight_domestic", "name": "Penerbangan domestik", "domain_applicability": ["personal", "organizational"], "scope": 3, "default_unit": "pkm"},
@@ -70,8 +79,12 @@
     {"code": "waste_landfill", "name": "Sampah ke TPA", "domain_applicability": ["personal", "organizational"], "scope": 3, "default_unit": "kg"},
     {"code": "lpg", "name": "LPG (pembakaran)", "domain_applicability": ["personal", "organizational"], "scope": 1, "default_unit": "kg"},
     {"code": "natural_gas", "name": "Gas alam (pembakaran stasioner)", "domain_applicability": ["organizational"], "scope": 1, "default_unit": "kWh"},
-    {"code": "diesel_stationary", "name": "Solar (pembakaran stasioner)", "domain_applicability": ["organizational"], "scope": 1, "default_unit": "L"},
-    {"code": "business_travel_air", "name": "Perjalanan dinas (udara)", "domain_applicability": ["organizational"], "scope": 3, "default_unit": "pkm"}
+    {"code": "diesel_stationary", "name": "Solar (pembakaran stasioner)", "domain_applicability": ["organizational", "sector"], "scope": 1, "default_unit": "L"},
+    {"code": "business_travel_air", "name": "Perjalanan dinas (udara)", "domain_applicability": ["organizational"], "scope": 3, "default_unit": "pkm"},
+    {"code": "enteric_cattle", "name": "Fermentasi enterik sapi (CH₄)", "domain_applicability": ["sector"], "default_unit": "head"},
+    {"code": "manure_cattle", "name": "Pengelolaan kotoran sapi (N₂O)", "domain_applicability": ["sector"], "default_unit": "head"},
+    {"code": "fert_synthetic_n", "name": "Pupuk N sintetis (N₂O langsung)", "domain_applicability": ["sector"], "default_unit": "kg"},
+    {"code": "rice_cultivation", "name": "Budidaya padi sawah (CH₄)", "domain_applicability": ["sector"], "default_unit": "ha"}
   ],
   "factors": [
     {"category": "elec_grid", "gas": "CO2", "source": "pln_klh", "value": 0.87, "unit": "kgCO2e/kWh", "region": "ID-Jamali", "gwp_basis": "CO2e", "tier": 1, "uncertainty_pct": 10, "meta": {"placeholder": true, "system": "Jawa-Madura-Bali"}},
@@ -88,6 +101,10 @@
     {"category": "business_travel_air", "gas": "CO2", "source": "defra_2024", "value": 0.158, "unit": "kgCO2e/pkm", "region": "GLOBAL", "gwp_basis": "CO2e", "uncertainty_pct": 8},
     {"category": "natural_gas", "gas": "CO2", "source": "defra_2024", "value": 0.18316, "unit": "kgCO2/kWh", "region": "GLOBAL", "gwp_basis": null, "uncertainty_pct": 3, "meta": {"note": "per-gas; engine konversi via GWP (CO2 GWP=1)"}},
     {"category": "natural_gas", "gas": "CH4", "source": "defra_2024", "value": 0.000256, "unit": "kgCH4/kWh", "region": "GLOBAL", "gwp_basis": null, "uncertainty_pct": 50, "meta": {"note": "per-gas; dikalikan GWP CH4 oleh engine"}},
-    {"category": "natural_gas", "gas": "N2O", "source": "defra_2024", "value": 0.0000307, "unit": "kgN2O/kWh", "region": "GLOBAL", "gwp_basis": null, "uncertainty_pct": 50, "meta": {"note": "per-gas; dikalikan GWP N2O oleh engine"}}
+    {"category": "natural_gas", "gas": "N2O", "source": "defra_2024", "value": 0.0000307, "unit": "kgN2O/kWh", "region": "GLOBAL", "gwp_basis": null, "uncertainty_pct": 50, "meta": {"note": "per-gas; dikalikan GWP N2O oleh engine"}},
+    {"category": "enteric_cattle", "gas": "CH4", "source": "ipcc_2019", "value": 68.0, "unit": "kgCH4/head", "region": "GLOBAL", "gwp_basis": null, "tier": 1, "uncertainty_pct": 30, "meta": {"placeholder": true, "animal": "dairy cattle", "tier1_default": true, "note": "EF Tier 1 default per ekor/thn (regional Asia, indikatif). Tier 2 via domain_fields ge_mj_per_day & methane_conversion_pct."}},
+    {"category": "manure_cattle", "gas": "N2O", "source": "ipcc_2019", "value": 0.005, "unit": "kgN2O-N/kgN", "region": "GLOBAL", "gwp_basis": null, "tier": 1, "uncertainty_pct": 50, "meta": {"placeholder": true, "ef3": true, "nex_kg_per_head_yr": 60.0, "ms_fraction": 1.0, "note": "EF3 N2O-N manure mgmt (Tier 1). Nex/MS default; engine ×44/28 ke N2O."}},
+    {"category": "fert_synthetic_n", "gas": "N2O", "source": "ipcc_2019", "value": 0.015714, "unit": "kgN2O/kgN", "region": "GLOBAL", "gwp_basis": null, "tier": 1, "uncertainty_pct": 60, "meta": {"note": "N2O langsung Tier 1: EF1=0.01 kgN2O-N/kgN × 44/28 = 0.015714 kgN2O/kgN."}},
+    {"category": "rice_cultivation", "gas": "CH4", "source": "ipcc_2019", "value": 143.0, "unit": "kgCH4/ha", "region": "GLOBAL", "gwp_basis": null, "tier": 1, "uncertainty_pct": 50, "meta": {"placeholder": true, "note": "CH4 sawah Tier 1 per ha per musim (baseline ~1.19 kgCH4/ha/hari × ~120 hari, indikatif)."}}
   ]
 }
