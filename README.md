@@ -4,7 +4,19 @@ Web app perhitungan emisi karbon (CO₂e) tingkat penelitian — **reproducible,
 traceable, uncertainty-aware**, dengan prioritas faktor emisi lokal Indonesia.
 Satu *core engine* + *domain modules* (Personal, Organizational, Sector, Product/LCA).
 
-Status: **Phase 0 — Core scaffolding** selesai (lihat `docs/methodology.md` & prompt).
+Status: Phase 0 (core) + Phase 1 (Personal) selesai (lihat `docs/methodology.md`).
+
+## 🌐 Demo Live (browser, tanpa instal)
+
+**https://nothinx.github.io/web-based-emisi-carbon/**
+
+Versi statis yang berjalan penuh di browser — kalkulator + factor registry, engine
+perhitungan (faktor, GWP, unit, uncertainty) di-port ke TypeScript dan dijalankan
+client-side. Cukup buka link, langsung pakai (tanpa login/server). Cocok untuk demo.
+
+> Demo statis tidak punya backend: tanpa login & tanpa penyimpanan lintas-perangkat.
+> Angka & metodologi identik dengan versi penuh. Sistem riset penuh = jalankan backend
+> (di bawah) untuk CRUD faktor persisten, multi-user, dan run yang tersimpan/auditable.
 
 ## Arsitektur
 

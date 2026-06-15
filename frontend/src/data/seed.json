@@ -1,0 +1,93 @@
+{
+  "_note": "Faktor contoh untuk Phase 0. Yang ditandai placeholder=true WAJIB diganti dengan faktor resmi sebelum dipakai untuk publikasi. Lihat docs/methodology.md.",
+  "sources": [
+    {
+      "key": "pln_klh",
+      "name": "PLN / KLHK Grid Emission Factor (Indonesia)",
+      "publisher": "PT PLN (Persero) / Kementerian LHK",
+      "url": "https://gatrik.esdm.go.id/",
+      "year": 2023,
+      "credibility_tier": 1,
+      "notes": "PLACEHOLDER nilai indikatif per sistem interkoneksi. Ganti dgn faktor grid resmi terbaru (Ditjen Gatrik/KLHK)."
+    },
+    {
+      "key": "defra_2024",
+      "name": "UK DEFRA/BEIS GHG Conversion Factors 2024",
+      "publisher": "UK Dept. for Environment, Food & Rural Affairs",
+      "url": "https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting",
+      "year": 2024,
+      "credibility_tier": 2,
+      "notes": "Faktor internasional sebagai fallback ketika faktor Indonesia belum tersedia."
+    },
+    {
+      "key": "poore_nemecek_2018",
+      "name": "Poore & Nemecek (2018), Science 360:987-992",
+      "publisher": "Science (AAAS)",
+      "url": "https://doi.org/10.1126/science.aaq0216",
+      "year": 2018,
+      "credibility_tier": 1,
+      "notes": "Meta-analisis LCA pangan global; nilai median cradle-to-retail."
+    },
+    {
+      "key": "ipcc_ar6",
+      "name": "IPCC AR6 WG1 Ch.7 (GWP-100)",
+      "publisher": "IPCC",
+      "url": "https://www.ipcc.ch/report/ar6/wg1/",
+      "year": 2021,
+      "credibility_tier": 1,
+      "notes": "Sumber nilai GWP."
+    },
+    {
+      "key": "iea_2023",
+      "name": "IEA World Average Electricity Emission Factor",
+      "publisher": "International Energy Agency",
+      "url": "https://www.iea.org/",
+      "year": 2023,
+      "credibility_tier": 2,
+      "notes": "PLACEHOLDER rata-rata dunia untuk fallback GLOBAL."
+    }
+  ],
+  "gases": [
+    {"symbol": "CO2", "name": "Karbon dioksida"},
+    {"symbol": "CH4", "name": "Metana"},
+    {"symbol": "N2O", "name": "Dinitrogen oksida"}
+  ],
+  "gwp_sets": [
+    {"name": "AR6", "horizon_years": 100, "notes": "IPCC AR6 GWP-100",
+     "values": {"CO2": 1, "CH4": 27.9, "N2O": 273}},
+    {"name": "AR5", "horizon_years": 100, "notes": "IPCC AR5 GWP-100",
+     "values": {"CO2": 1, "CH4": 28, "N2O": 265}},
+    {"name": "AR4", "horizon_years": 100, "notes": "IPCC AR4 GWP-100 (masih dipakai byk inventarisasi)",
+     "values": {"CO2": 1, "CH4": 25, "N2O": 298}}
+  ],
+  "categories": [
+    {"code": "elec_grid", "name": "Listrik jaringan (grid)", "domain_applicability": ["personal", "organizational"], "scope": 2, "default_unit": "kWh"},
+    {"code": "car_petrol", "name": "Mobil bensin", "domain_applicability": ["personal"], "default_unit": "km"},
+    {"code": "motorcycle", "name": "Sepeda motor", "domain_applicability": ["personal"], "default_unit": "km"},
+    {"code": "flight_domestic", "name": "Penerbangan domestik", "domain_applicability": ["personal", "organizational"], "scope": 3, "default_unit": "pkm"},
+    {"code": "food_beef", "name": "Konsumsi daging sapi", "domain_applicability": ["personal"], "default_unit": "kg"},
+    {"code": "food_chicken", "name": "Konsumsi daging ayam", "domain_applicability": ["personal"], "default_unit": "kg"},
+    {"code": "waste_landfill", "name": "Sampah ke TPA", "domain_applicability": ["personal", "organizational"], "scope": 3, "default_unit": "kg"},
+    {"code": "lpg", "name": "LPG (pembakaran)", "domain_applicability": ["personal", "organizational"], "scope": 1, "default_unit": "kg"},
+    {"code": "natural_gas", "name": "Gas alam (pembakaran stasioner)", "domain_applicability": ["organizational"], "scope": 1, "default_unit": "kWh"},
+    {"code": "diesel_stationary", "name": "Solar (pembakaran stasioner)", "domain_applicability": ["organizational"], "scope": 1, "default_unit": "L"},
+    {"code": "business_travel_air", "name": "Perjalanan dinas (udara)", "domain_applicability": ["organizational"], "scope": 3, "default_unit": "pkm"}
+  ],
+  "factors": [
+    {"category": "elec_grid", "gas": "CO2", "source": "pln_klh", "value": 0.87, "unit": "kgCO2e/kWh", "region": "ID-Jamali", "gwp_basis": "CO2e", "tier": 1, "uncertainty_pct": 10, "meta": {"placeholder": true, "system": "Jawa-Madura-Bali"}},
+    {"category": "elec_grid", "gas": "CO2", "source": "pln_klh", "value": 1.18, "unit": "kgCO2e/kWh", "region": "ID-Sumatera", "gwp_basis": "CO2e", "tier": 1, "uncertainty_pct": 12, "meta": {"placeholder": true}},
+    {"category": "elec_grid", "gas": "CO2", "source": "iea_2023", "value": 0.475, "unit": "kgCO2e/kWh", "region": "GLOBAL", "gwp_basis": "CO2e", "tier": 2, "uncertainty_pct": 15, "meta": {"placeholder": true}},
+    {"category": "car_petrol", "gas": "CO2", "source": "defra_2024", "value": 0.17048, "unit": "kgCO2e/km", "region": "GLOBAL", "gwp_basis": "CO2e", "uncertainty_pct": 5, "meta": {"vehicle": "average car, petrol"}},
+    {"category": "motorcycle", "gas": "CO2", "source": "defra_2024", "value": 0.10086, "unit": "kgCO2e/km", "region": "GLOBAL", "gwp_basis": "CO2e", "uncertainty_pct": 10},
+    {"category": "flight_domestic", "gas": "CO2", "source": "defra_2024", "value": 0.2443, "unit": "kgCO2e/pkm", "region": "GLOBAL", "gwp_basis": "CO2e", "uncertainty_pct": 8, "meta": {"note": "domestic, incl. RF uplift"}},
+    {"category": "food_beef", "gas": "CO2", "source": "poore_nemecek_2018", "value": 99.48, "unit": "kgCO2e/kg", "region": "GLOBAL", "gwp_basis": "CO2e", "tier": 1, "dist_type": "lognormal", "dist_params": {"gsd": 1.6}},
+    {"category": "food_chicken", "gas": "CO2", "source": "poore_nemecek_2018", "value": 9.87, "unit": "kgCO2e/kg", "region": "GLOBAL", "gwp_basis": "CO2e", "tier": 1, "dist_type": "lognormal", "dist_params": {"gsd": 1.4}},
+    {"category": "waste_landfill", "gas": "CO2", "source": "defra_2024", "value": 0.45867, "unit": "kgCO2e/kg", "region": "GLOBAL", "gwp_basis": "CO2e", "uncertainty_pct": 20, "meta": {"placeholder": true, "note": "mixed municipal waste, landfill"}},
+    {"category": "lpg", "gas": "CO2", "source": "defra_2024", "value": 2.93896, "unit": "kgCO2e/kg", "region": "GLOBAL", "gwp_basis": "CO2e", "uncertainty_pct": 4},
+    {"category": "diesel_stationary", "gas": "CO2", "source": "defra_2024", "value": 2.66155, "unit": "kgCO2e/L", "region": "GLOBAL", "gwp_basis": "CO2e", "uncertainty_pct": 4},
+    {"category": "business_travel_air", "gas": "CO2", "source": "defra_2024", "value": 0.158, "unit": "kgCO2e/pkm", "region": "GLOBAL", "gwp_basis": "CO2e", "uncertainty_pct": 8},
+    {"category": "natural_gas", "gas": "CO2", "source": "defra_2024", "value": 0.18316, "unit": "kgCO2/kWh", "region": "GLOBAL", "gwp_basis": null, "uncertainty_pct": 3, "meta": {"note": "per-gas; engine konversi via GWP (CO2 GWP=1)"}},
+    {"category": "natural_gas", "gas": "CH4", "source": "defra_2024", "value": 0.000256, "unit": "kgCH4/kWh", "region": "GLOBAL", "gwp_basis": null, "uncertainty_pct": 50, "meta": {"note": "per-gas; dikalikan GWP CH4 oleh engine"}},
+    {"category": "natural_gas", "gas": "N2O", "source": "defra_2024", "value": 0.0000307, "unit": "kgN2O/kWh", "region": "GLOBAL", "gwp_basis": null, "uncertainty_pct": 50, "meta": {"note": "per-gas; dikalikan GWP N2O oleh engine"}}
+  ]
+}

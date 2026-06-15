@@ -117,6 +117,14 @@
   color: var(--muted);
   letter-spacing: 0.02em;
 }
+.static-badge {
+  font-size: 11px;
+  color: var(--primary-strong);
+  background: var(--warning-soft);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  align-self: flex-start;
+}
 
 .content {
   padding: var(--s-8) var(--s-12);

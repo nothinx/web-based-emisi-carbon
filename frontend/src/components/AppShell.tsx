@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { useAuth } from "../auth/AuthContext";
 import "./appshell.css";
 
+const STATIC = import.meta.env.VITE_STATIC === "1";
+
 const NAV = [
   { to: "/calculator", label: "Kalkulator Personal", hint: "Hitung jejak karbon", group: "Phase 1 · Domain" },
   { to: "/factors", label: "Emission Factors", hint: "Jantung registry", group: "Phase 0 · Core" },
@@ -44,9 +46,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="sidebar-foot">
-          <button className="logout" onClick={logout}>
-            Keluar
-          </button>
+          {STATIC ? (
+            <span className="static-badge">Demo · berjalan di browser</span>
+          ) : (
+            <button className="logout" onClick={logout}>
+              Keluar
+            </button>
+          )}
           <span className="reproducible">Reproducible · Traceable</span>
         </div>
       </aside>

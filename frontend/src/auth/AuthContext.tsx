@@ -9,8 +9,11 @@ interface AuthState {
 
 const Ctx = createContext<AuthState | null>(null);
 
+// Mode statis (GitHub Pages): tanpa server/login — langsung masuk.
+const STATIC = import.meta.env.VITE_STATIC === "1";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authed, setAuthed] = useState(() => !!getToken());
+  const [authed, setAuthed] = useState(() => STATIC || !!getToken());
 
   async function login(email: string, password: string) {
     const token = await api.login(email, password);

@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { AppShell } from "./components/AppShell";
 import { Login } from "./pages/Login";
@@ -33,12 +33,16 @@ function Root() {
   );
 }
 
+const STATIC = import.meta.env.VITE_STATIC === "1";
+
 export default function App() {
+  // Static (GitHub Pages): HashRouter agar deep-link & refresh tak 404.
+  const Router = STATIC ? HashRouter : BrowserRouter;
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <Router>
         <Root />
-      </BrowserRouter>
+      </Router>
     </AuthProvider>
   );
 }

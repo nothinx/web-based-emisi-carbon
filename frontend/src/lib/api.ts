@@ -1,8 +1,12 @@
 // Klien API tipis di atas fetch. Token JWT disuntik dari localStorage.
 // Dev: panggilan ke /api/* di-proxy ke backend (lihat vite.config.ts).
 
+import { ApiError as StaticApiError, staticRequest } from "./staticBackend";
+
 const BASE = "/api";
 const TOKEN_KEY = "carbon.token";
+// Mode statis (GitHub Pages): tanpa backend, engine berjalan di browser.
+const STATIC = import.meta.env.VITE_STATIC === "1";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -21,6 +25,16 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (STATIC) {
+    const method = (init.method ?? "GET").toUpperCase();
+    const body = init.body ? JSON.parse(init.body as string) : undefined;
+    try {
+      return await staticRequest<T>(method, path, body);
+    } catch (e) {
+      if (e instanceof StaticApiError) throw new ApiError(e.status, e.message);
+      throw e;
+    }
+  }
   const headers = new Headers(init.headers);
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -48,6 +62,7 @@ export const api = {
     request<T>(p, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
 
   async login(email: string, password: string): Promise<string> {
+    if (STATIC) return "static-demo";
     const form = new URLSearchParams({ username: email, password });
     const res = await fetch(`${BASE}/auth/token`, {
       method: "POST",
